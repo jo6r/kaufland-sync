@@ -1,9 +1,9 @@
 -- Database and user creation
-CREATE DATABASE IF NOT EXISTS shoptet_marketplace_sync;
-CREATE USER IF NOT EXISTS 'shoptet_marketplace_sync'@'%' IDENTIFIED BY 'shoptet_marketplace_sync123';
-GRANT ALL PRIVILEGES ON shoptet_marketplace_sync.* TO 'shoptet_marketplace_sync'@'%';
+CREATE DATABASE IF NOT EXISTS kaufland_sync;
+CREATE USER IF NOT EXISTS 'kaufland_sync'@'%' IDENTIFIED BY 'kaufland_sync123';
+GRANT ALL PRIVILEGES ON kaufland_sync.* TO 'kaufland_sync'@'%';
 
-USE shoptet_marketplace_sync;
+USE kaufland_sync;
 
 -- Table: shoptet_stock
 CREATE TABLE IF NOT EXISTS shoptet_stock (
@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS shoptet_stock (
   INDEX idx_shoptet_stock_code (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Table: kaufland_unit_mapping
-CREATE TABLE IF NOT EXISTS kaufland_unit_mapping (
+-- Table: shoptet_unit_mapping
+CREATE TABLE IF NOT EXISTS shoptet_unit_mapping (
   id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   ean               VARCHAR(32) NOT NULL,
   id_unit           VARCHAR(64) NOT NULL,
@@ -32,9 +32,9 @@ CREATE TABLE IF NOT EXISTS kaufland_unit_mapping (
                       DEFAULT CURRENT_TIMESTAMP(3)
                       ON UPDATE CURRENT_TIMESTAMP(3),
   PRIMARY KEY (id),
-  UNIQUE KEY uq_kaufland_ean (ean),
-  UNIQUE KEY uq_kaufland_unit (id_unit),
-  INDEX idx_kaufland_status (status)
+  UNIQUE KEY uq_shoptet_unit_mapping_ean (ean),
+  UNIQUE KEY uq_shoptet_unit_mapping_unit (id_unit),
+  INDEX idx_shoptet_unit_mapping_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Table: job_state

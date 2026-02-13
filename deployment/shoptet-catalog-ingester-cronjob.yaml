@@ -28,7 +28,7 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: ingester
-            image: zot.jo6r.xyz/shoptet-catalog-ingester:2.0
+            image: zot.jo6r.xyz/shoptet-catalog-ingester:2.1
             imagePullPolicy: Always
             command: ["python", "main.py"]
             env:

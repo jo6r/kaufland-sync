@@ -27,10 +27,10 @@ class ShoptetStock(Base):
         return f"<ShoptetStock(ean='{self.ean}', code='{self.code}', qty={self.qty})>"
 
 
-class KauflandUnitMapping(Base):
-    """Model for kaufland_unit_mapping table."""
+class ShoptetUnitMapping(Base):
+    """Model for shoptet_unit_mapping table."""
 
-    __tablename__ = 'kaufland_unit_mapping'
+    __tablename__ = 'shoptet_unit_mapping'
 
     id = Column(BigInteger().with_variant(Integer, 'sqlite'), primary_key=True, autoincrement=True)
     ean = Column(String(32), nullable=False, unique=True)
@@ -49,7 +49,7 @@ class KauflandUnitMapping(Base):
     )
 
     def __repr__(self):
-        return f"<KauflandUnitMapping(ean='{self.ean}', id_unit='{self.id_unit}')>"
+        return f"<ShoptetUnitMapping(ean='{self.ean}', id_unit='{self.id_unit}')>"
 
 
 class JobState(Base):

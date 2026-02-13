@@ -111,7 +111,7 @@ def get_changed_stock(since_dt: Optional[datetime]) -> List[Dict[str, Any]]:
 
 def map_eans_to_id_units(eans: List[str]) -> Dict[str, str]:
     """
-    Map EANs to id_unit from kaufland_unit_mapping table.
+    Map EANs to id_unit from shoptet_unit_mapping table.
 
     Args:
         eans: List of EAN codes
@@ -299,7 +299,7 @@ if __name__ == '__main__':
             # Extract EANs from stock items
             eans = [item['ean'] for item in stock_items]
             
-            # Map EANs to id_units from kaufland_unit_mapping
+            # Map EANs to id_units from shoptet_unit_mapping
             ean_to_id_unit = map_eans_to_id_units(eans)
 
             if not ean_to_id_unit:

@@ -1,4 +1,4 @@
-"""DAO for kaufland_unit_mapping operations."""
+"""DAO for shoptet_unit_mapping operations."""
 
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
-from shared_db.models import KauflandUnitMapping
+from shared_db.models import ShoptetUnitMapping
 
 
 def bulk_upsert_mapping(
@@ -37,10 +37,10 @@ def bulk_upsert_mapping(
             continue
 
         # Try to get existing record by ean or id_unit
-        existing = session.query(KauflandUnitMapping).filter(
+        existing = session.query(ShoptetUnitMapping).filter(
             or_(
-                KauflandUnitMapping.ean == ean,
-                KauflandUnitMapping.id_unit == id_unit
+                ShoptetUnitMapping.ean == ean,
+                ShoptetUnitMapping.id_unit == id_unit
             )
         ).first()
 
@@ -52,7 +52,7 @@ def bulk_upsert_mapping(
             existing.last_fetch_at = fetched_at
         else:
             # Insert new record
-            new_mapping = KauflandUnitMapping(
+            new_mapping = ShoptetUnitMapping(
                 ean=ean,
                 id_unit=id_unit,
                 status=status,
@@ -64,7 +64,7 @@ def bulk_upsert_mapping(
 def get_mapping_by_eans(
     session: Session,
     eans: List[str]
-) -> List[KauflandUnitMapping]:
+) -> List[ShoptetUnitMapping]:
     """
     Get mappings by EANs.
 
@@ -73,11 +73,11 @@ def get_mapping_by_eans(
         eans: List of EANs to look up
 
     Returns:
-        List of KauflandUnitMapping objects
+        List of ShoptetUnitMapping objects
     """
     if not eans:
         return []
 
-    return session.query(KauflandUnitMapping).filter(
-        KauflandUnitMapping.ean.in_(eans)
+    return session.query(ShoptetUnitMapping).filter(
+        ShoptetUnitMapping.ean.in_(eans)
     ).all()
