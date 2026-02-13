@@ -88,7 +88,12 @@ def fetch_id_unit_for_ean(
     Returns:
         id_unit jako řetězec, nebo None pokud jednotka neexistuje.
     """
-    response = client.get_units_by_ean(ean, storefront=storefront)
+    response = client.get(
+        endpoint="/v2/units",
+        params={"storefront": storefront, "ean": ean}
+    )
+    response.raise_for_status()
+    response = response.json()
 
     if not isinstance(response, dict) or 'data' not in response:
         return None

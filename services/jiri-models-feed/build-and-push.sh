@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to build and push Docker image to registry
+# Script to build and push Podman image to registry
 #
 # Usage: ./build-and-push.sh <version>
 # Example: ./build-and-push.sh 1.0
@@ -36,7 +36,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-echo "Building Docker image..."
+echo "Building Podman image..."
 echo "Registry: ${REGISTRY}"
 echo "Image: ${FULL_IMAGE_NAME}"
 echo "Project root: ${PROJECT_ROOT}"
@@ -54,7 +54,7 @@ echo ""
 
 # Login to registry
 echo "Logging in to registry ${REGISTRY}..."
-echo "${REGISTRY_PASSWORD}" | docker login "${REGISTRY}" --username "${REGISTRY_USER}" --password-stdin
+echo "${REGISTRY_PASSWORD}" | podman login "${REGISTRY}" --username "${REGISTRY_USER}" --password-stdin
 
 # Push to registry
 echo "Pushing to registry ${REGISTRY}..."

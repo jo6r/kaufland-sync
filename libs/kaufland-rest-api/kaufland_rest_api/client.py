@@ -117,32 +117,6 @@ class KauflandAPIClient:
         
         return response
     
-    def get_units_by_ean(self, ean: str, storefront: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Get units by EAN.
-        
-        Args:
-            ean: EAN code
-            storefront: Storefront code (default: uses self.storefront)
-            
-        Returns:
-            Response JSON as dictionary
-            
-        Raises:
-            requests.RequestException: If request fails
-            ValueError: If response is not successful
-        """
-        if storefront is None:
-            storefront = self.storefront
-        
-        response = self.get(
-            endpoint="/v2/units",
-            params={"storefront": storefront, "ean": ean}
-        )
-        
-        response.raise_for_status()
-        return response.json()
-    
     def post(self, endpoint: str, data: Any, params: Optional[Dict[str, Any]] = None) -> requests.Response:
         """
         Make a signed POST request to Kaufland API.

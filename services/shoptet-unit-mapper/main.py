@@ -98,7 +98,12 @@ def fetch_unit_info_for_ean(
     Raises:
         requests.RequestException: If API request fails
     """
-    response = client.get_units_by_ean(ean, storefront=storefront)
+    response = client.get(
+        endpoint="/v2/units",
+        params={"storefront": storefront, "ean": ean}
+    )
+    response.raise_for_status()
+    response = response.json()
     
     # Response structure:
     # {
