@@ -22,7 +22,7 @@ from shared_db.dao import get_all_jiri_feed_items, get_last_run, set_last_run
 
 logger = logging.getLogger(__name__)
 
-JOB_NAME = "jiri-models-feed-stock-updater"
+JOB_NAME = "jiri-models-stock-updater"
 
 # stock ANO -> amount 5, stock NE -> amount 0
 AMOUNT_IN_STOCK = 5

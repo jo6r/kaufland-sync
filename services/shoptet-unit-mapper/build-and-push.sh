@@ -8,7 +8,7 @@ set -e  # Exit on error
 
 # Configuration
 REGISTRY="zot.jo6r.xyz"
-IMAGE_NAME="jiri-models-feed-stock-updater"
+IMAGE_NAME="shoptet-unit-mapper"
 REGISTRY_USER="zot"
 
 # Check if version is provided

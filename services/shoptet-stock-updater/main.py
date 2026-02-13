@@ -17,7 +17,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-JOB_NAME = "kaufland-stock-updater"
+JOB_NAME = "shoptet-stock-updater"
 
 
 def setup_ssl_certificates():

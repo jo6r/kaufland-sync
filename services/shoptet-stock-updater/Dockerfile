@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.pytho
 
 # Copy application files
 WORKDIR /app
-COPY services/kaufland-unit-mapper /app/app
+COPY services/shoptet-stock-updater /app/app
 
 # Install application dependencies
 WORKDIR /app/app

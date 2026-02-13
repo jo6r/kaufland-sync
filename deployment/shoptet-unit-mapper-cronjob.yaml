@@ -1,29 +1,34 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: jiri-models-feed-stock-updater
+  name: shoptet-unit-mapper
   labels:
-    app: jiri-models-feed-stock-updater
+    app: shoptet-unit-mapper
 spec:
-  # Schedule: At minute 15 past every hour (after jiri-models-feed can ingest data)
-  schedule: "15 * * * *"
+  # Schedule: Run once daily at 1:00 AM
+  schedule: "0 1 * * *"
+  # Keep last 3 successful jobs
   successfulJobsHistoryLimit: 3
+  # Keep last 1 failed job
   failedJobsHistoryLimit: 1
+  # Job will be considered failed if not completed within 30 minutes
   jobTemplate:
     spec:
-      activeDeadlineSeconds: 600
+      # Job timeout
+      activeDeadlineSeconds: 1800
+      # Retry policy
       backoffLimit: 2
       template:
         metadata:
           labels:
-            app: jiri-models-feed-stock-updater
+            app: shoptet-unit-mapper
         spec:
           imagePullSecrets:
           - name: registry-secret
           restartPolicy: OnFailure
           containers:
-          - name: updater
-            image: zot.jo6r.xyz/jiri-models-feed-stock-updater:1.0
+          - name: mapper
+            image: zot.jo6r.xyz/shoptet-unit-mapper:1.6
             imagePullPolicy: Always
             command: ["python", "main.py"]
             env:

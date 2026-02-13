@@ -1,34 +1,29 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: kaufland-stock-updater
+  name: jiri-models-stock-updater
   labels:
-    app: kaufland-stock-updater
+    app: jiri-models-stock-updater
 spec:
-  # Schedule: At minute 30 past every 2nd hour.
-  schedule: "30 */2 * * *"
-  # Keep last 3 successful jobs
+  # Schedule: At minute 15 past every hour (after jiri-models-feed can ingest data)
+  schedule: "15 * * * *"
   successfulJobsHistoryLimit: 3
-  # Keep last 1 failed job
   failedJobsHistoryLimit: 1
-  # Job will be considered failed if not completed within 10 minutes
   jobTemplate:
     spec:
-      # Job timeout
       activeDeadlineSeconds: 600
-      # Retry policy
       backoffLimit: 2
       template:
         metadata:
           labels:
-            app: kaufland-stock-updater
+            app: jiri-models-stock-updater
         spec:
           imagePullSecrets:
           - name: registry-secret
           restartPolicy: OnFailure
           containers:
           - name: updater
-            image: zot.jo6r.xyz/kaufland-stock-updater:1.2
+            image: zot.jo6r.xyz/jiri-models-stock-updater:1.0
             imagePullPolicy: Always
             command: ["python", "main.py"]
             env:

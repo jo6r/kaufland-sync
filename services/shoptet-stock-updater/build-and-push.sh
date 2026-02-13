@@ -8,7 +8,7 @@ set -e  # Exit on error
 
 # Configuration
 REGISTRY="zot.jo6r.xyz"
-IMAGE_NAME="kaufland-unit-mapper"
+IMAGE_NAME="shoptet-stock-updater"
 REGISTRY_USER="zot"
 
 # Check if version is provided

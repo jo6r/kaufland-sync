@@ -17,7 +17,7 @@ from shared_db.dao import get_all_eans, bulk_upsert_mapping, set_last_run
 
 logger = logging.getLogger(__name__)
 
-JOB_NAME = "kaufland-unit-mapper"
+JOB_NAME = "shoptet-unit-mapper"
 
 
 def setup_ssl_certificates():
