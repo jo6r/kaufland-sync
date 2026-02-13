@@ -1,0 +1,66 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kaufland-unit-mapper
+  labels:
+    app: kaufland-unit-mapper
+spec:
+  # Schedule: Run once daily at 1:00 AM
+  schedule: "0 1 * * *"
+  # Keep last 3 successful jobs
+  successfulJobsHistoryLimit: 3
+  # Keep last 1 failed job
+  failedJobsHistoryLimit: 1
+  # Job will be considered failed if not completed within 30 minutes
+  jobTemplate:
+    spec:
+      # Job timeout
+      activeDeadlineSeconds: 1800
+      # Retry policy
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: kaufland-unit-mapper
+        spec:
+          imagePullSecrets:
+          - name: registry-secret
+          restartPolicy: OnFailure
+          containers:
+          - name: mapper
+            image: zot.jo6r.xyz/kaufland-unit-mapper:1.6
+            imagePullPolicy: Always
+            command: ["python", "main.py"]
+            env:
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: dsn
+            - name: KAUFLAND_CLIENT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kaufland-api-secret
+                  key: CLIENT_KEY
+            - name: KAUFLAND_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kaufland-api-secret
+                  key: SECRET_KEY
+            - name: KAUFLAND_STOREFRONT
+              valueFrom:
+                configMapKeyRef:
+                  name: kaufland-api
+                  key: storefront
+            - name: KAUFLAND_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: kaufland-api
+                  key: base-url
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "200m"
+              limits:
+                memory: "1Gi"
+                cpu: "1000m"

@@ -1,0 +1,17 @@
+# Ignore CSV files (should be mounted as volumes)
+products.csv
+*.csv
+
+# Ignore virtual environments
+.venv/
+venv/
+env/
+
+# Ignore certificates
+*.crt
+*.key
+*.pem
+
+# Ignore git
+.git/
+.gitignore

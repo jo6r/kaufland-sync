@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: jiri-models-feed-stock-updater
+  labels:
+    app: jiri-models-feed-stock-updater
+spec:
+  # Schedule: At minute 15 past every hour (after jiri-models-feed can ingest data)
+  schedule: "15 * * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 600
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: jiri-models-feed-stock-updater
+        spec:
+          imagePullSecrets:
+          - name: registry-secret
+          restartPolicy: OnFailure
+          containers:
+          - name: updater
+            image: zot.jo6r.xyz/jiri-models-feed-stock-updater:1.0
+            imagePullPolicy: Always
+            command: ["python", "main.py"]
+            env:
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: dsn
+            - name: KAUFLAND_CLIENT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kaufland-api-secret
+                  key: CLIENT_KEY
+            - name: KAUFLAND_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kaufland-api-secret
+                  key: SECRET_KEY
+            - name: KAUFLAND_STOREFRONT
+              valueFrom:
+                configMapKeyRef:
+                  name: kaufland-api
+                  key: storefront
+            - name: KAUFLAND_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: kaufland-api
+                  key: base-url
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "200m"
+              limits:
+                memory: "1Gi"
+                cpu: "1000m"

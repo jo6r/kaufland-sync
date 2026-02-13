@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shoptet-catalog-ingester
+  labels:
+    app: shoptet-catalog-ingester
+data:
+  # CSV URL for downloading catalog
+  csv-url: "https://www.mamito.cz/export/products.csv?patternId=27&partnerId=33&hash=62461a573739a6838662d347f4e4beca92c3bc12ebb221046b60a046fd379fd5"
+  # Comma-separated list of codes to ignore during import
+  ignore-codes: "9-LL284"
+
