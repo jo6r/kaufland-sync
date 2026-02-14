@@ -5,8 +5,8 @@ metadata:
   labels:
     app: jiri-models-stock-updater
 spec:
-  # Schedule: At minute 15 past every hour (after jiri-models-feed can ingest data)
-  schedule: "15 * * * *"
+  # At 00:30.
+  schedule: "30 0 * * *"
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
   jobTemplate:
