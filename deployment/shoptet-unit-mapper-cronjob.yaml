@@ -7,8 +7,8 @@ metadata:
 spec:
   # Schedule: Run once daily at 1:00 AM
   schedule: "0 1 * * *"
-  # Keep last 3 successful jobs
-  successfulJobsHistoryLimit: 3
+  # Keep last 1 successful jobs
+  successfulJobsHistoryLimit: 1
   # Keep last 1 failed job
   failedJobsHistoryLimit: 1
   # Job will be considered failed if not completed within 30 minutes
