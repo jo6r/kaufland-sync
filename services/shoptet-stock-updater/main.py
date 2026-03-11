@@ -96,6 +96,8 @@ def get_changed_stock(since_dt: Optional[datetime]) -> List[Dict[str, Any]]:
         
         stock_items = get_stock_changed_after(session, since_dt)
         logger.info(f"Found {len(stock_items)} stock items changed since {since_dt}")
+        for item in stock_items:
+            logger.info(f"  Changed EAN: {item.ean}, qty: {item.qty}")
         
         # Extract data from ORM objects while still in session scope
         # to avoid DetachedInstanceError
