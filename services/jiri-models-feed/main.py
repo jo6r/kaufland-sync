@@ -14,6 +14,7 @@ import requests
 from shared_db.session import session_scope
 from shared_db.models import JiriModelsFeedItem
 from shared_db.dao import set_last_run
+from shared_db.trace_log import STAGE_JIRI_FEED, trace_line
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +146,15 @@ def parse_products(xml_content: str) -> List[Tuple[str, str, str]]:
         ean = _text(_find_child(product, "EAN"))
         stock = _text(_find_child(product, "STOCK"))
         if ean:
-            result.append((code or "", ean, stock or ""))
+            stock_val = stock or ""
+            result.append((code or "", ean, stock_val))
+            logger.info(
+                trace_line(
+                    ean,
+                    STAGE_JIRI_FEED,
+                    f"feed product stock={stock_val} code={code or ''}",
+                )
+            )
         else:
             logger.warning("Skipping product with empty EAN: %s", ET.tostring(product, encoding="unicode")[:200])
     return result

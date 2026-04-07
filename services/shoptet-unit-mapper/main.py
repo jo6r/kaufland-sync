@@ -14,6 +14,7 @@ from typing import List, Dict, Any, Optional
 from kaufland_rest_api import KauflandAPIClient
 from shared_db.session import session_scope
 from shared_db.dao import get_all_eans, bulk_upsert_mapping, set_last_run
+from shared_db.trace_log import STAGE_SHOPTET_UNIT_MAP, trace_line
 
 logger = logging.getLogger(__name__)
 
@@ -118,31 +119,33 @@ def fetch_unit_info_for_ean(
     # }
     
     if not isinstance(response, dict):
-        logger.warning(f"Unexpected response type for EAN {ean}. Expected dict, got {type(response)}")
+        logger.warning(
+            trace_line(ean, STAGE_SHOPTET_UNIT_MAP, f"unexpected API response type, expected dict, got {type(response)}")
+        )
         return None
     
     if 'data' not in response:
-        logger.warning(f"No 'data' field in response for EAN {ean}")
+        logger.warning(trace_line(ean, STAGE_SHOPTET_UNIT_MAP, "no 'data' field in API response"))
         return None
     
     data = response['data']
     if not isinstance(data, list):
-        logger.warning(f"'data' is not a list for EAN {ean}")
+        logger.warning(trace_line(ean, STAGE_SHOPTET_UNIT_MAP, f"'data' is not a list, got {type(data)}"))
         return None
     
     if len(data) == 0:
-        logger.info(f"No units found for EAN {ean} (empty data list)")
+        logger.info(trace_line(ean, STAGE_SHOPTET_UNIT_MAP, "no Kaufland units (empty data list)"))
         return None
     
     # Get first unit from data
     unit = data[0]
     if not isinstance(unit, dict):
-        logger.warning(f"Unit is not a dict for EAN {ean}")
+        logger.warning(trace_line(ean, STAGE_SHOPTET_UNIT_MAP, "unit entry is not a dict"))
         return None
     
     # Extract id_unit and status from API response
     if 'id_unit' not in unit:
-        logger.warning(f"No 'id_unit' field in unit for EAN {ean}")
+        logger.warning(trace_line(ean, STAGE_SHOPTET_UNIT_MAP, "no 'id_unit' in unit payload"))
         return None
 
     id_unit = str(unit['id_unit'])
@@ -175,8 +178,6 @@ def map_eans_to_unit_mappings(
     fetched_at = datetime.now(timezone.utc)
     
     for i, ean in enumerate(eans, 1):
-        logger.info(f"Processing EAN {i}/{len(eans)}: {ean}")
-        
         try:
             unit_info = fetch_unit_info_for_ean(client, ean, storefront=storefront)
             
@@ -186,10 +187,21 @@ def map_eans_to_unit_mappings(
                     'id_unit': unit_info['id_unit'],
                     'status': unit_info['status']
                 })
-                logger.info(f"Mapped EAN {ean} -> id_unit {unit_info['id_unit']}, status {unit_info['status']}")
+                logger.info(
+                    trace_line(
+                        ean,
+                        STAGE_SHOPTET_UNIT_MAP,
+                        f"mapped index={i}/{len(eans)} id_unit={unit_info['id_unit']} api_status={unit_info['status']}",
+                    )
+                )
             else:
-                # Skip EAN if not found
-                logger.warning(f"Could not find id_unit for EAN {ean}, skipping")
+                logger.warning(
+                    trace_line(
+                        ean,
+                        STAGE_SHOPTET_UNIT_MAP,
+                        f"no id_unit index={i}/{len(eans)} (skipped)",
+                    )
+                )
                 continue
         except requests.HTTPError as e:
             # Check for 401 Unauthorized - terminate script
@@ -198,10 +210,10 @@ def map_eans_to_unit_mappings(
                 logger.error(f"Error details: {e}")
                 sys.exit(1)
             # Handle other HTTP errors
-            logger.error(f"HTTP error processing EAN {ean}: {e}")
+            logger.error(trace_line(ean, STAGE_SHOPTET_UNIT_MAP, f"HTTP error: {e}"))
         except Exception as e:
             # Handle other API errors
-            logger.error(f"Error processing EAN {ean}: {e}")
+            logger.error(trace_line(ean, STAGE_SHOPTET_UNIT_MAP, f"error: {e}"))
     
     return mappings
 

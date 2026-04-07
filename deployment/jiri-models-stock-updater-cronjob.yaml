@@ -23,7 +23,7 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: updater
-            image: zot.jo6r.xyz/jiri-models-stock-updater:1.1
+            image: zot.jo6r.xyz/jiri-models-stock-updater:1.2
             imagePullPolicy: Always
             command: ["python", "main.py"]
             env:

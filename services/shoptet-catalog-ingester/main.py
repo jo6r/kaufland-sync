@@ -10,6 +10,7 @@ from pathlib import Path
 
 from shared_db.session import session_scope
 from shared_db.dao import bulk_upsert_stock, set_last_run
+from shared_db.trace_log import STAGE_SHOPTET_CATALOG, trace_line
 
 from csv_parser import parse_csv, extract_fields
 from validator import validate_items
@@ -141,7 +142,16 @@ def ingest_stock(items: List[Dict[str, Any]]) -> None:
         return
     
     logger.info(f"Ingesting {len(items)} items into database")
-    
+    for item in items:
+        ean = str(item.get("ean", ""))
+        logger.info(
+            trace_line(
+                ean,
+                STAGE_SHOPTET_CATALOG,
+                f"catalog row qty={item.get('qty')} product_visibility={item.get('product_visibility')} code={item.get('code', '')}",
+            )
+        )
+
     with session_scope() as session:
         bulk_upsert_stock(session, items)
     

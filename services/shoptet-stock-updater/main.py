@@ -8,10 +8,11 @@ import argparse
 import certifi
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 from shared_db.session import session_scope
 from shared_db.dao import get_stock_changed_after, get_mapping_by_eans, get_last_run, set_last_run
+from shared_db.trace_log import STAGE_SHOPTET_STOCK, trace_line
 from kaufland_rest_api import KauflandAPIClient
 import requests
 
@@ -96,18 +97,21 @@ def get_changed_stock(since_dt: Optional[datetime]) -> List[Dict[str, Any]]:
         
         stock_items = get_stock_changed_after(session, since_dt)
         logger.info(f"Found {len(stock_items)} stock items changed since {since_dt}")
-        for item in stock_items:
-            logger.info(f"  Changed EAN: {item.ean}, qty: {item.qty}")
-        
-        # Extract data from ORM objects while still in session scope
-        # to avoid DetachedInstanceError
+
         result = []
         for item in stock_items:
+            logger.info(
+                trace_line(
+                    item.ean,
+                    STAGE_SHOPTET_STOCK,
+                    f"queued from DB qty={item.qty} (changed_at job filter)",
+                )
+            )
             result.append({
                 'ean': item.ean,
                 'qty': item.qty
             })
-        
+
         return result
 
 
@@ -137,22 +141,40 @@ def map_eans_to_id_units(eans: List[str]) -> Dict[str, str]:
                 ean_to_id_unit[mapping.ean] = mapping.id_unit
             else:
                 inactive_count += 1
-                logger.debug(f"Skipping EAN {mapping.ean} - status is {mapping.status}, not AVAILABLE")
+                logger.debug(
+                    trace_line(
+                        mapping.ean,
+                        STAGE_SHOPTET_STOCK,
+                        f"skipped mapping status={mapping.status} (not AVAILABLE)",
+                    )
+                )
 
     if inactive_count > 0:
         logger.info(f"Mapped {len(ean_to_id_unit)}/{len(eans)} EANs to id_units ({inactive_count} mappings skipped due to non-AVAILABLE status)")
     else:
         logger.info(f"Mapped {len(ean_to_id_unit)}/{len(eans)} EANs to id_units")
 
-    # Log missing mappings
+    # Log missing mappings (trace_ean= so one EAN is grep-able across containers)
     missing_eans = set(eans) - set(ean_to_id_unit.keys())
     if missing_eans:
-        logger.warning(f"Missing id_unit mappings for {len(missing_eans)} EANs: {list(missing_eans)[:10]}...")
+        sample = list(missing_eans)[:50]
+        for me in sample:
+            logger.warning(
+                trace_line(me, STAGE_SHOPTET_STOCK, "no AVAILABLE id_unit mapping in DB (not in bulk payload)")
+            )
+        if len(missing_eans) > len(sample):
+            logger.warning(
+                "... and %s more EANs missing mapping (see trace_ean= lines above for first %s)",
+                len(missing_eans) - len(sample),
+                len(sample),
+            )
 
     return ean_to_id_unit
 
 
-def create_bulk_payload(stock_items: List[Dict[str, Any]], ean_to_id_unit: Dict[str, str]) -> List[Dict[str, Any]]:
+def create_bulk_payload(
+    stock_items: List[Dict[str, Any]], ean_to_id_unit: Dict[str, str]
+) -> Tuple[List[Dict[str, Any]], Dict[int, str]]:
     """
     Create bulk payload for stock update API.
 
@@ -167,27 +189,45 @@ def create_bulk_payload(stock_items: List[Dict[str, Any]], ean_to_id_unit: Dict[
         ean_to_id_unit: Dict mapping ean -> id_unit
 
     Returns:
-        List of unit update objects for /units/bulk endpoint
+        (unit update objects for /units/bulk, id_unit int -> ean for API response tracing)
     """
     units = []
     seen_id_units = set()  # Track duplicates
+    id_unit_to_ean: Dict[int, str] = {}
 
     for stock_item in stock_items:
         ean = stock_item['ean']
         id_unit = ean_to_id_unit.get(ean)
 
         if not id_unit:
-            logger.debug(f"Skipping EAN {ean} - no id_unit mapping found")
+            logger.debug(
+                trace_line(ean, STAGE_SHOPTET_STOCK, "skipped: no id_unit mapping for this EAN")
+            )
             continue
 
         id_unit_int = int(id_unit)
 
         # Check for duplicates (API rejects duplicates)
         if id_unit_int in seen_id_units:
-            logger.warning(f"Skipping duplicate id_unit {id_unit_int} for EAN {ean}")
+            logger.warning(
+                trace_line(
+                    ean,
+                    STAGE_SHOPTET_STOCK,
+                    f"skipped duplicate id_unit={id_unit_int}",
+                )
+            )
             continue
 
         seen_id_units.add(id_unit_int)
+        id_unit_to_ean[id_unit_int] = ean
+
+        logger.info(
+            trace_line(
+                ean,
+                STAGE_SHOPTET_STOCK,
+                f"before Kaufland update id_unit={id_unit} qty={stock_item['qty']}",
+            )
+        )
 
         # Create unit update payload according to API documentation
         # Format: { "id_unit": int, "unit_data": { "amount": int } }
@@ -204,7 +244,7 @@ def create_bulk_payload(stock_items: List[Dict[str, Any]], ean_to_id_unit: Dict[
         logger.warning(f"Payload contains {len(units)} units, but API allows maximum 150. Consider splitting the request.")
     
     logger.info(f"Created bulk payload with {len(units)} units")
-    return units
+    return units, id_unit_to_ean
 
 
 def update_units_bulk(client: KauflandAPIClient, payload: List[Dict[str, Any]], storefront: str = "cz") -> Dict[str, Any]:
@@ -310,7 +350,7 @@ if __name__ == '__main__':
                 update_job_checkpoint()
             else:
                 # Create bulk payload
-                payload = create_bulk_payload(stock_items, ean_to_id_unit)
+                payload, id_unit_to_ean = create_bulk_payload(stock_items, ean_to_id_unit)
                 
                 if not payload:
                     logger.warning("Bulk payload is empty - nothing to update")
@@ -337,6 +377,8 @@ if __name__ == '__main__':
                                 for item in response['data']:
                                     id_unit = item.get('id_unit')
                                     status_code = item.get('status_code')
+                                    id_int = int(id_unit) if id_unit is not None else None
+                                    trace_ean = id_unit_to_ean.get(id_int) if id_int is not None else None
                                     
                                     if status_code == 200:
                                         success_count += 1
@@ -344,7 +386,16 @@ if __name__ == '__main__':
                                         if 'unit' in item:
                                             unit = item['unit']
                                             new_amount = unit.get('amount')
-                                            logger.debug(f"Unit {id_unit} updated successfully: amount={new_amount}")
+                                            if trace_ean:
+                                                logger.debug(
+                                                    trace_line(
+                                                        trace_ean,
+                                                        STAGE_SHOPTET_STOCK,
+                                                        f"Kaufland API ok id_unit={id_unit} amount={new_amount}",
+                                                    )
+                                                )
+                                            else:
+                                                logger.debug(f"Unit {id_unit} updated successfully: amount={new_amount}")
                                     else:
                                         error_count += 1
                                         # Log error details
@@ -353,7 +404,12 @@ if __name__ == '__main__':
                                         
                                         error_details = [f"{err.get('field', 'unknown')}: {err.get('message', '')}" for err in errors] if errors else []
                                         
+                                        detail = f"Kaufland API failed id_unit={id_unit} status_code={status_code} message={message}"
                                         if error_details:
+                                            detail += f" errors={', '.join(error_details)}"
+                                        if trace_ean:
+                                            logger.warning(trace_line(trace_ean, STAGE_SHOPTET_STOCK, detail))
+                                        elif error_details:
                                             logger.warning(f"Unit {id_unit} update failed (status_code {status_code}): {message}. Errors: {', '.join(error_details)}")
                                         else:
                                             logger.warning(f"Unit {id_unit} update failed (status_code {status_code}): {message}")

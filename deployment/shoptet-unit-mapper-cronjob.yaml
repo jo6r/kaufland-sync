@@ -28,7 +28,7 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: mapper
-            image: zot.jo6r.xyz/shoptet-unit-mapper:1.8
+            image: zot.jo6r.xyz/shoptet-unit-mapper:1.9
             imagePullPolicy: Always
             command: ["python", "main.py"]
             env:

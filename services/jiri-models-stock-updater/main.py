@@ -14,11 +14,12 @@ import certifi
 import requests
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 from kaufland_rest_api import KauflandAPIClient
 from shared_db.session import session_scope
 from shared_db.dao import get_all_jiri_feed_items, get_last_run, set_last_run
+from shared_db.trace_log import STAGE_JIRI_STOCK, trace_line
 
 logger = logging.getLogger(__name__)
 
@@ -122,12 +123,17 @@ def resolve_id_units(
     for i, item in enumerate(feed_items, 1):
         ean = item['ean']
         stock = item['stock']
-        logger.info(f"Resolving EAN {i}/{len(feed_items)}: {ean}")
 
         try:
             id_unit = fetch_id_unit_for_ean(client, ean, storefront=storefront)
             if not id_unit:
-                logger.warning(f"id_unit not found for EAN {ean}, skipping")
+                logger.warning(
+                    trace_line(
+                        ean,
+                        STAGE_JIRI_STOCK,
+                        f"resolve {i}/{len(feed_items)} no id_unit on Kaufland (skipped)",
+                    )
+                )
                 continue
 
             amount = AMOUNT_IN_STOCK if stock.upper() == "ANO" else AMOUNT_OUT_OF_STOCK
@@ -137,33 +143,55 @@ def resolve_id_units(
                 'id_unit': id_unit,
                 'amount': amount,
             })
-            logger.debug(f"EAN {ean} -> id_unit {id_unit}, amount={amount}")
+            logger.info(
+                trace_line(
+                    ean,
+                    STAGE_JIRI_STOCK,
+                    f"resolve {i}/{len(feed_items)} stock={stock} -> id_unit={id_unit} amount={amount}",
+                )
+            )
         except requests.HTTPError as e:
             if e.response is not None and e.response.status_code == 401:
                 logger.error("Received 401 Unauthorized. Terminating.")
                 sys.exit(1)
-            logger.error(f"HTTP error for EAN {ean}: {e}")
+            logger.error(trace_line(ean, STAGE_JIRI_STOCK, f"HTTP error: {e}"))
         except Exception as e:
-            logger.error(f"Error for EAN {ean}: {e}")
+            logger.error(trace_line(ean, STAGE_JIRI_STOCK, f"error: {e}"))
 
     return resolved
 
 
-def create_bulk_payload(resolved: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def create_bulk_payload(resolved: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], Dict[int, str]]:
     """
     Vytvoří payload pro POST /v2/units/bulk.
     Max 150 jednotek na request.
+    Returns (units payload, id_unit int -> ean for API response tracing).
     """
     units = []
     seen = set()
+    id_unit_to_ean: Dict[int, str] = {}
 
     for item in resolved:
         id_unit = item['id_unit']
         id_unit_int = int(id_unit)
         if id_unit_int in seen:
-            logger.warning(f"Skipping duplicate id_unit {id_unit_int} for EAN {item['ean']}")
+            logger.warning(
+                trace_line(
+                    item["ean"],
+                    STAGE_JIRI_STOCK,
+                    f"skipped duplicate id_unit={id_unit_int}",
+                )
+            )
             continue
         seen.add(id_unit_int)
+        id_unit_to_ean[id_unit_int] = item["ean"]
+        logger.info(
+            trace_line(
+                item["ean"],
+                STAGE_JIRI_STOCK,
+                f"before Kaufland update id_unit={id_unit} stock={item['stock']} amount={item['amount']}",
+            )
+        )
         units.append({
             "id_unit": id_unit_int,
             "unit_data": {"amount": item['amount']},
@@ -171,7 +199,7 @@ def create_bulk_payload(resolved: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
     if len(units) > 150:
         logger.warning(f"Payload has {len(units)} units; API allows max 150 per request. Will chunk.")
-    return units
+    return units, id_unit_to_ean
 
 
 def update_units_bulk(
@@ -236,24 +264,51 @@ if __name__ == '__main__':
                 logger.warning("No id_units resolved - nothing to update")
                 update_job_checkpoint()
             else:
-                payload = create_bulk_payload(resolved)
+                payload, id_unit_to_ean = create_bulk_payload(resolved)
                 max_per_request = 150
                 total_updated = 0
 
                 for i in range(0, len(payload), max_per_request):
                     chunk = payload[i:i + max_per_request]
-                    logger.info(f"Processing chunk {i // max_per_request + 1} ({len(chunk)} units)")
+                    chunk_num = i // max_per_request + 1
+                    n_chunks = (len(payload) + max_per_request - 1) // max_per_request
+                    logger.info(
+                        "bulk update chunk %s/%s: %s units",
+                        chunk_num,
+                        n_chunks,
+                        len(chunk),
+                    )
 
                     try:
                         response = update_units_bulk(client, chunk)
                         if 'data' in response and isinstance(response['data'], list):
+                            ok = 0
+                            err = 0
                             for item in response['data']:
+                                id_u = item.get("id_unit")
+                                id_int = int(id_u) if id_u is not None else None
+                                trace_ean = id_unit_to_ean.get(id_int) if id_int is not None else None
                                 if item.get('status_code') == 200:
+                                    ok += 1
                                     total_updated += 1
                                 else:
-                                    logger.warning(
-                                        f"Unit {item.get('id_unit')} failed: {item.get('message', '')}"
+                                    err += 1
+                                    msg = (
+                                        f"Kaufland API bulk id_unit={id_u} status_code={item.get('status_code')} "
+                                        f"message={item.get('message', '')}"
                                     )
+                                    if trace_ean:
+                                        logger.warning(trace_line(trace_ean, STAGE_JIRI_STOCK, msg))
+                                    else:
+                                        logger.warning("bulk result: %s", msg)
+                            logger.info(
+                                "chunk %s/%s done: ok=%s err=%s (of %s)",
+                                chunk_num,
+                                n_chunks,
+                                ok,
+                                err,
+                                len(response["data"]),
+                            )
                         else:
                             total_updated += len(chunk)
                     except requests.HTTPError as e:
