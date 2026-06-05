@@ -27,7 +27,7 @@ spec:
           - name: registry-secret
           restartPolicy: OnFailure
           containers:
-          - name: mapper
+          - name: shoptet-unit-mapper
             image: zot.jo6r.xyz/shoptet-unit-mapper:1.9
             imagePullPolicy: Always
             command: ["python", "main.py"]

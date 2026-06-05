@@ -27,7 +27,7 @@ spec:
           - name: registry-secret
           restartPolicy: OnFailure
           containers:
-          - name: updater
+          - name: shoptet-stock-updater
             image: zot.jo6r.xyz/shoptet-stock-updater:1.6
             imagePullPolicy: Always
             command: ["python", "main.py"]

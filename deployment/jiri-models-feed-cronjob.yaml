@@ -22,7 +22,7 @@ spec:
           - name: registry-secret
           restartPolicy: OnFailure
           containers:
-          - name: feed
+          - name: jiri-models-feed
             image: zot.jo6r.xyz/jiri-models-feed:1.5
             imagePullPolicy: Always
             command: ["python", "main.py"]
