@@ -57,3 +57,6 @@ dmypy.json
 
 # pyenv
 .python-version
+
+.env
+.env.*
