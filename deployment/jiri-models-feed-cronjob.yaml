@@ -24,7 +24,7 @@ spec:
           containers:
           - name: jiri-models-feed
             image: zot.jo6r.xyz/jiri-models-feed:1.5
-            imagePullPolicy: Always
+            imagePullPolicy: IfNotPresent
             command: ["python", "main.py"]
             env:
             - name: DB_DSN

@@ -29,7 +29,7 @@ spec:
           containers:
           - name: shoptet-stock-updater
             image: zot.jo6r.xyz/shoptet-stock-updater:1.6
-            imagePullPolicy: Always
+            imagePullPolicy: IfNotPresent
             command: ["python", "main.py"]
             env:
             - name: DB_DSN

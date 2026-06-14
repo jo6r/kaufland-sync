@@ -24,7 +24,7 @@ spec:
           containers:
           - name: updater
             image: zot.jo6r.xyz/jiri-models-stock-updater:1.2
-            imagePullPolicy: Always
+            imagePullPolicy: IfNotPresent
             command: ["python", "main.py"]
             env:
             - name: DB_DSN

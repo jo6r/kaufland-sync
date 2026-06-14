@@ -29,7 +29,7 @@ spec:
           containers:
           - name: shoptet-catalog-ingester
             image: zot.jo6r.xyz/shoptet-catalog-ingester:2.2
-            imagePullPolicy: Always
+            imagePullPolicy: IfNotPresent
             command: ["python", "main.py"]
             env:
             - name: DB_DSN

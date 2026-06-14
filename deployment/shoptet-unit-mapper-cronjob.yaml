@@ -29,7 +29,7 @@ spec:
           containers:
           - name: shoptet-unit-mapper
             image: zot.jo6r.xyz/shoptet-unit-mapper:1.9
-            imagePullPolicy: Always
+            imagePullPolicy: IfNotPresent
             command: ["python", "main.py"]
             env:
             - name: DB_DSN
