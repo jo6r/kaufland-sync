@@ -26,37 +26,19 @@ spec:
             image: zot.jo6r.xyz/kaufland/shoptet-offer-stock-updater:1.1
             imagePullPolicy: IfNotPresent
             command: ["python", "main.py"]
-            env:
-            - name: SHOPTET_CSV_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: shoptet-offer-stock-updater
-                  key: csv-url
-            - name: IGNORE_CODES
-              valueFrom:
-                configMapKeyRef:
-                  name: shoptet-offer-stock-updater
-                  key: IGNORE_CODES
-            - name: KAUFLAND_CLIENT_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: kaufland-api-secret
-                  key: CLIENT_KEY
-            - name: KAUFLAND_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: kaufland-api-secret
-                  key: SECRET_KEY
-            - name: KAUFLAND_STOREFRONT
-              valueFrom:
-                configMapKeyRef:
-                  name: kaufland-api
-                  key: storefront
-            - name: KAUFLAND_BASE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: kaufland-api
-                  key: FEED_CSV_URL
+            envFrom:
+                - configMapRef: 
+                    name: shoptet-offer-stock-updater
+                - configMapRef:
+                    name: kaufland-api
+                - secretRef:
+                    name: kaufland-api-secret
+            # env:
+            # - name: SHOPTET_CSV_URL
+            #   valueFrom:
+            #     configMapKeyRef:
+            #       name: shoptet-offer-stock-updater
+            #       key: SHOPTET_CSV_URL
             resources:
               requests:
                 memory: "256Mi"

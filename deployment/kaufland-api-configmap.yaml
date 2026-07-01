@@ -5,5 +5,5 @@ metadata:
   labels:
     app: kaufland-api
 data:
-  storefront: "cz"
-  base-url: "https://sellerapi.kaufland.com"
+  KAUFLAND_STOREFRONT: "cz"
+  KAUFLAND_BASE_URL: "https://sellerapi.kaufland.com"
