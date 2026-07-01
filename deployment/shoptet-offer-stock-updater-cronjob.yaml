@@ -1,42 +1,42 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: shoptet-stock-updater
+  name: shoptet-offer-stock-updater
   labels:
-    app: shoptet-stock-updater
+    app: shoptet-offer-stock-updater
 spec:
-  # Schedule: At minute 30 past every 2nd hour.
-  schedule: "30 */2 * * *"
-  # Keep last 1 successful jobs
+  # Schedule: At minute 0 past every 2nd hour.
+  schedule: "0 */2 * * *"
   successfulJobsHistoryLimit: 1
-  # Keep last 1 failed job
   failedJobsHistoryLimit: 1
-  # Job will be considered failed if not completed within 10 minutes
   jobTemplate:
     spec:
-      # Job timeout
-      activeDeadlineSeconds: 600
-      # Retry policy
+      activeDeadlineSeconds: 1200
       backoffLimit: 2
       template:
         metadata:
           labels:
-            app: shoptet-stock-updater
+            app: shoptet-offer-stock-updater
         spec:
           imagePullSecrets:
           - name: registry-secret
           restartPolicy: OnFailure
           containers:
-          - name: shoptet-stock-updater
-            image: zot.jo6r.xyz/shoptet-stock-updater:1.6
+          - name: shoptet-offer-stock-updater
+            image: zot.jo6r.xyz/kaufland/shoptet-offer-stock-updater:1.1
             imagePullPolicy: IfNotPresent
             command: ["python", "main.py"]
             env:
-            - name: DB_DSN
+            - name: SHOPTET_CSV_URL
               valueFrom:
-                secretKeyRef:
-                  name: db-secret
-                  key: dsn
+                configMapKeyRef:
+                  name: shoptet-offer-stock-updater
+                  key: csv-url
+            - name: IGNORE_CODES
+              valueFrom:
+                configMapKeyRef:
+                  name: shoptet-offer-stock-updater
+                  key: IGNORE_CODES
             - name: KAUFLAND_CLIENT_KEY
               valueFrom:
                 secretKeyRef:
@@ -56,7 +56,7 @@ spec:
               valueFrom:
                 configMapKeyRef:
                   name: kaufland-api
-                  key: base-url
+                  key: FEED_CSV_URL
             resources:
               requests:
                 memory: "256Mi"

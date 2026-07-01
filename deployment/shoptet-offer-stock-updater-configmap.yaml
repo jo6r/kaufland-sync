@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shoptet-offer-stock-updater
+  labels:
+    app: shoptet-offer-stock-updater
+data:
+  # CSV URL for downloading Shoptet feed
+  FEED_CSV_URL: "https://www.mamito.cz/export/products.csv?patternId=27&partnerId=33&hash=62461a573739a6838662d347f4e4beca92c3bc12ebb221046b60a046fd379fd5"
+  # Comma-separated list of product codes to ignore
+  IGNORE_CODES: "9-LL284"
