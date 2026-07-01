@@ -1,11 +1,10 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: jiri-models-stock-updater
+  name: jirimodels-offer-stock-updater
   labels:
-    app: jiri-models-stock-updater
+    app: jirimodels-offer-stock-updater
 spec:
-  # At 00:30.
   schedule: "30 0 * * *"
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
@@ -16,22 +15,22 @@ spec:
       template:
         metadata:
           labels:
-            app: jiri-models-stock-updater
+            app: jirimodels-offer-stock-updater
         spec:
           imagePullSecrets:
           - name: registry-secret
           restartPolicy: OnFailure
           containers:
-          - name: updater
-            image: zot.jo6r.xyz/jiri-models-stock-updater:1.2
+          - name: jirimodels-offer-stock-updater
+            image: zot.jo6r.xyz/kaufland/jirimodels-offer-stock-updater:1.3
             imagePullPolicy: IfNotPresent
             command: ["python", "main.py"]
             env:
-            - name: DB_DSN
+            - name: JIRI_MODELS_FEED_URL
               valueFrom:
-                secretKeyRef:
-                  name: db-secret
-                  key: dsn
+                configMapKeyRef:
+                  name: jirimodels-offer-stock-updater
+                  key: feed-url
             - name: KAUFLAND_CLIENT_KEY
               valueFrom:
                 secretKeyRef:
