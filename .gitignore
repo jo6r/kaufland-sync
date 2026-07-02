@@ -60,3 +60,5 @@ dmypy.json
 
 .env
 .env.*
+
+scripts/data

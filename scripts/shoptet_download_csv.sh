@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="$SCRIPT_DIR/data"
 OUTPUT_FILE="$DATA_DIR/products.csv"
-CSV_URL="https://www.mamito.cz/export/products.csv?patternId=27&partnerId=33&hash=62461a573739a6838662d347f4e4beca92c3bc12ebb221046b60a046fd379fd5"
+CSV_URL="https://www.mamito.cz/export/products.csv?patternId=19&partnerId=33&hash=2f876c151fbc053c5f53f56cee81dec73a135c777c92b1095b697c246a0adfd6"
 TMP_FILE="$(mktemp)"
 
 trap 'rm -f "$TMP_FILE"' EXIT
