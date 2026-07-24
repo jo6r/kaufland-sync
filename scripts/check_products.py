@@ -6,6 +6,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import hmac
+import logging
 import os
 import time
 from pathlib import Path
@@ -19,8 +20,11 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 load_dotenv(SCRIPTS_DIR / ".env")
 
 INPUT_CSV_PATH = SCRIPTS_DIR / "data" / "products.csv"
-OUTPUT_CSV_PATH = SCRIPTS_DIR / "data" / "products_kaufland_check.csv"
+OUTPUT_CSV_PATH = SCRIPTS_DIR / "data" / "products_check.csv"
 STOREFRONT = os.getenv("KAUFLAND_STOREFRONT", "cz")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+logger = logging.getLogger(__name__)
 
 OUTPUT_COLUMNS = [
     "kaufland_ean_exists",
@@ -105,9 +109,11 @@ def check_ean_exists(client: KauflandAPIClient, ean: str) -> Tuple[bool, Optiona
     response = client.get(f"/v2/products/ean/{ean}", params={"storefront": client.storefront})
 
     if response.status_code == 404:
+        logger.debug("EAN %s was not found in products endpoint", ean)
         return False, None, None
 
     if response.status_code != 200:
+        logger.warning("Products endpoint returned HTTP %s for EAN %s", response.status_code, ean)
         return False, None, f"products_ean_http_{response.status_code}"
 
     payload = response.json()
@@ -127,6 +133,7 @@ def check_offer_exists(client: KauflandAPIClient, ean: str) -> Tuple[bool, Optio
     response = client.get("/v2/units", params={"storefront": client.storefront, "ean": ean, "limit": 1})
 
     if response.status_code != 200:
+        logger.warning("Units endpoint returned HTTP %s for EAN %s", response.status_code, ean)
         return False, None, f"units_http_{response.status_code}"
 
     payload = response.json()
@@ -188,6 +195,14 @@ def missing_ean_result() -> Dict[str, Optional[str] | bool]:
 
 def process_csv(client: KauflandAPIClient, input_path: Path, output_path: Path) -> None:
     cache: Dict[str, Dict[str, Optional[str] | bool]] = {}
+    total_rows = 0
+    written_rows = 0
+    hidden_rows = 0
+    missing_ean_rows = 0
+    cache_hits = 0
+    cache_misses = 0
+
+    logger.info("Processing CSV from %s to %s", input_path, output_path)
 
     with input_path.open("r", encoding="utf-8", newline="") as src_file:
         reader = csv.DictReader(src_file, delimiter=";")
@@ -200,19 +215,44 @@ def process_csv(client: KauflandAPIClient, input_path: Path, output_path: Path) 
             writer = csv.DictWriter(dst_file, fieldnames=fieldnames, delimiter=";", quoting=csv.QUOTE_MINIMAL)
             writer.writeheader()
 
-            for row in reader:
+            for row_number, row in enumerate(reader, start=2):
+                total_rows += 1
+
                 if is_hidden_row(row):
+                    hidden_rows += 1
                     continue
 
                 ean = normalize_ean(row.get("ean"))
                 if not ean:
+                    missing_ean_rows += 1
+                    logger.warning("Row %s is missing EAN", row_number)
                     writer.writerow(enrich_row_with_result(row, missing_ean_result()))
+                    written_rows += 1
                     continue
 
                 if ean not in cache:
+                    cache_misses += 1
                     cache[ean] = resolve_ean_status(client, ean)
+                else:
+                    cache_hits += 1
 
                 writer.writerow(enrich_row_with_result(row, cache[ean]))
+                written_rows += 1
+
+    logger.info(
+        "Finished CSV processing: total=%s written=%s hidden=%s missing_ean=%s unique_eans=%s cache_hits=%s",
+        total_rows,
+        written_rows,
+        hidden_rows,
+        missing_ean_rows,
+        len(cache),
+        cache_hits,
+    )
+
+
+def configure_logging() -> None:
+    level = getattr(logging, LOG_LEVEL, logging.INFO)
+    logging.basicConfig(level=level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
 def build_client() -> KauflandAPIClient:
@@ -225,10 +265,11 @@ def build_client() -> KauflandAPIClient:
 
 
 def main() -> None:
+    configure_logging()
     client = build_client()
     OUTPUT_CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
     process_csv(client, INPUT_CSV_PATH, OUTPUT_CSV_PATH)
-    print(f"Done. Output written to: {OUTPUT_CSV_PATH}")
+    logger.info("Done. Output written to: %s", OUTPUT_CSV_PATH)
 
 
 if __name__ == "__main__":
