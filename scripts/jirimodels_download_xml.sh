@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+
+mkdir -p data
+curl -L "https://830da31362404f48af581b3d17b226.e3.environment.api.powerplatform.com/powerautomate/automations/direct/workflows/b0ef334a78e0481ab3dd289931d68684/triggers/manual/paths/invoke/systemId/6cd8732b-57fb-f011-8405-000d3a468045?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=wUhwagyusdwhbfyuaNpfHbvNXfQLap3A0JAFcIDmm-Q" -o data/jirimodels.xml
+echo "Ulozeno do data/jirimodels.xml"
