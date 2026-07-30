@@ -19,16 +19,13 @@ from dotenv import load_dotenv
 SCRIPTS_DIR = Path(__file__).resolve().parent
 load_dotenv(SCRIPTS_DIR / ".env")
 
-DEFAULT_OUTPUT_CSV_PATH = SCRIPTS_DIR / "data" / "offers_storefronts_check.csv"
-DEFAULT_SOURCE_STOREFRONT = "cz"
-DEFAULT_TARGET_STOREFRONTS = ["de", "sk", "pl", "es", "fr", "nl", "at", "it"]
-OUTPUT_CSV_PATH = Path(os.getenv("OUTPUT_CSV_PATH", str(DEFAULT_OUTPUT_CSV_PATH)))
-SOURCE_STOREFRONT = os.getenv("SOURCE_STOREFRONT", DEFAULT_SOURCE_STOREFRONT).strip().lower()
-TARGET_STOREFRONTS_CSV = os.getenv("TARGET_STOREFRONTS", ",".join(DEFAULT_TARGET_STOREFRONTS))
+OUTPUT_CSV_PATH = SCRIPTS_DIR / "data" / "offers_storefronts_check.csv"
+SOURCE_STOREFRONT = "cz"
+TARGET_STOREFRONTS = ["de", "sk", "pl", "es", "fr", "nl", "at", "it"]
 UNITS_PAGE_LIMIT = 100
 FLUSH_EVERY_ROWS = max(1, int(os.getenv("OUTPUT_FLUSH_EVERY_ROWS", "1")))
 ENABLE_FSYNC = os.getenv("OUTPUT_ENABLE_FSYNC", "0").strip().lower() in {"1", "true", "yes"}
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_LEVEL = "INFO"
 
 logger = logging.getLogger(__name__)
 
@@ -89,23 +86,13 @@ def normalize_ean(raw: Optional[str]) -> str:
     return str(raw).strip().strip('"')
 
 
-def parse_storefronts(value: str) -> list[str]:
-    storefronts = [item.strip().lower() for item in value.split(",") if item.strip()]
-    unique: list[str] = []
-    for storefront in storefronts:
-        if storefront not in unique:
-            unique.append(storefront)
-    if not unique:
-        raise ValueError("No storefronts provided")
-    return unique
-
 
 def check_offer_exists_in_storefront(
     client: KauflandAPIClient,
     ean: str,
     storefront: str,
 ) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
-    response = client.get("/v2/units", params={"storefront": storefront, "ean": ean, "limit": 1})
+    response = client.get("/units", params={"storefront": storefront, "ean": ean, "limit": 1})
 
     if response.status_code != 200:
         logger.warning(
@@ -145,7 +132,7 @@ def fetch_units_page(
     limit: int,
 ) -> Tuple[list[Dict[str, Any]], int, Optional[str]]:
     response = client.get(
-        "/v2/units",
+        "/units",
         params={"storefront": storefront, "offset": offset, "limit": limit},
     )
 
@@ -197,7 +184,7 @@ def fetch_all_units(client: KauflandAPIClient, storefront: str) -> list[Dict[str
 
 
 def fetch_product_ean(client: KauflandAPIClient, product_id: int, storefront: str) -> Tuple[str, Optional[str]]:
-    response = client.get(f"/v2/products/{product_id}", params={"storefront": storefront})
+    response = client.get(f"/products/{product_id}", params={"storefront": storefront})
 
     if response.status_code != 200:
         return "", f"product_http_{response.status_code}"
@@ -409,7 +396,7 @@ def build_client() -> KauflandAPIClient:
     return KauflandAPIClient(
         client_key=require_env("KAUFLAND_CLIENT_KEY"),
         secret_key=require_env("KAUFLAND_SECRET_KEY"),
-        base_url=require_env("KAUFLAND_BASE_URL", "https://sellerapi.kaufland.com"),
+        base_url=require_env("KAUFLAND_BASE_URL", "https://sellerapi.kaufland.com/v2"),
     )
 
 
@@ -417,7 +404,7 @@ def main() -> None:
     configure_logging()
 
     source_storefront = SOURCE_STOREFRONT
-    target_storefronts = parse_storefronts(TARGET_STOREFRONTS_CSV)
+    target_storefronts = TARGET_STOREFRONTS
     output_path = OUTPUT_CSV_PATH
 
     if source_storefront in target_storefronts:
