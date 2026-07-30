@@ -23,7 +23,7 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: shoptet-offer-stock-updater
-            image: zot.jo6r.xyz/kaufland/shoptet-offer-stock-updater:1.1
+            image: zot.jo6r.xyz/kaufland/shoptet-offer-stock-updater:1.2
             imagePullPolicy: IfNotPresent
             command: ["python", "main.py"]
             envFrom:

@@ -33,6 +33,8 @@ class KauflandAPIClient:
             raise ValueError("KAUFLAND_SECRET_KEY must be provided or set as environment variable")
         if not self.base_url:
             raise ValueError("KAUFLAND_BASE_URL must be provided or set as environment variable")
+            
+        self.session = requests.Session()
 
     def _sign_request(self, method: str, uri: str, body: str, timestamp: int) -> str:
         string_to_sign = "\n".join([method.upper(), uri, body if body else "", str(timestamp)])
@@ -65,7 +67,7 @@ class KauflandAPIClient:
             "Shop-Signature": signature,
             "User-Agent": "mamitocz_development",
         }
-        return requests.get(url=uri, headers=headers)
+        return self.session.get(url=uri, headers=headers)
 
     def post(self, endpoint: str, data: Any, params: Optional[Dict[str, Any]] = None) -> requests.Response:
         uri = self._build_uri(endpoint, params=params)
@@ -80,4 +82,4 @@ class KauflandAPIClient:
             "Shop-Signature": signature,
             "User-Agent": "mamitocz_development",
         }
-        return requests.post(url=uri, headers=headers, data=body)
+        return self.session.post(url=uri, headers=headers, data=body)

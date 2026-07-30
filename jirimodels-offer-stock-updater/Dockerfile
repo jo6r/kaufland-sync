@@ -4,10 +4,6 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY jirimodels-offer-stock-updater /app/app
 
 WORKDIR /app/app
