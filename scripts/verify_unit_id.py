@@ -14,7 +14,7 @@ from urllib.parse import urlencode
 import requests
 
 
-EAN = "8595593829272"
+EAN = "8032780604378"
 STOREFRONT = "cz"
 
 # Load environment variables from .env
