@@ -22,7 +22,7 @@ load_dotenv(Path(__file__).with_name(".env"))
 
 logger = logging.getLogger(__name__)
 
-AMOUNT_IN_STOCK = os.getenv("KAUFLAND_CLIENT_KEY") or 1
+AMOUNT_IN_STOCK = os.getenv("AMOUNT_IN_STOCK") or 1
 AMOUNT_OUT_OF_STOCK = 0
 MAX_UNITS_PER_REQUEST = 150
 
