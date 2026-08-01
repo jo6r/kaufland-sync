@@ -79,15 +79,24 @@ def normalize_ean(raw: Optional[str]) -> str:
 
 def check_offer_exists_in_storefront(
     client: KauflandAPIClient,
-    id_unit: str,
+    id_product: int,
     storefront: str,
 ) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
-    response = client.get(f"/units/{id_unit}", params={"storefront": storefront})
+    response = client.get(
+        "/units",
+        params={
+            "storefront": storefront,
+            "id_product": id_product,
+            "fulfillment_type": "fulfilled_by_merchant",
+            "limit": 30,
+            "offset": 0,
+        },
+    )
 
     if response.status_code != 200:
         logger.warning(
-            "Units endpoint returned HTTP %s for id_unit %s in storefront %s",
-            response.status_code, id_unit, storefront,
+            "Units endpoint returned HTTP %s for id_product %s in storefront %s",
+            response.status_code, id_product, storefront,
         )
         return False, None, None, f"units_http_{response.status_code}"
 
@@ -96,11 +105,15 @@ def check_offer_exists_in_storefront(
         return False, None, None, "units_invalid_payload"
 
     data = payload.get("data")
-    if not isinstance(data, dict):
+    if not isinstance(data, list):
         return False, None, None, "units_missing_data"
+        
+    if not data:
+        return False, None, None, "units_not_found"
 
-    unit_id = data.get("id_unit")
-    price = data.get("price")
+    first_unit = data[0]
+    unit_id = first_unit.get("id_unit")
+    price = first_unit.get("price")
     
     if unit_id is None:
         return True, None, str(price) if price is not None else None, "units_missing_id_unit"
@@ -231,19 +244,19 @@ def process_unit_row(
         stats.missing_ean += 1
         return populate_missing_targets(row, target_storefronts, "missing_ean")
 
-    if not id_unit:
-        return populate_missing_targets(row, target_storefronts, "missing_id_unit")
+    if product_id < 0:
+        return populate_missing_targets(row, target_storefronts, "missing_product_id")
 
-    if id_unit not in offer_cache:
+    if product_id not in offer_cache:
         stats.cache_misses += 1
-        offer_cache[id_unit] = {
-            sf: check_offer_exists_in_storefront(client, id_unit, sf) for sf in target_storefronts
+        offer_cache[product_id] = {
+            sf: check_offer_exists_in_storefront(client, product_id, sf) for sf in target_storefronts
         }
     else:
         stats.cache_hits += 1
 
     for sf in target_storefronts:
-        exists, target_unit_id, price, error = offer_cache[id_unit][sf]
+        exists, target_unit_id, price, error = offer_cache[product_id][sf]
 
         row.update({
             f"kaufland_offer_exists_{sf}": "1" if exists else "0",
@@ -263,7 +276,7 @@ def export_offers_storefronts_check(
 
     stats = ExportStats()
     ean_cache: dict[int, Tuple[str, Optional[str]]] = {}
-    offer_cache: dict[str, dict[str, Tuple[bool, Optional[str], Optional[str], Optional[str]]]] = {}
+    offer_cache: dict[int, dict[str, Tuple[bool, Optional[str], Optional[str], Optional[str]]]] = {}
 
     with output_path.open("w", encoding="utf-8", newline="") as dst_file:
         writer = csv.DictWriter(dst_file, fieldnames=get_csv_fieldnames(target_storefronts), delimiter=",", quoting=csv.QUOTE_MINIMAL)
