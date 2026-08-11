@@ -75,42 +75,49 @@ def load_target_eans(path: Path) -> List[str]:
     return eans
 
 
-def load_shoptet_names(path: Path) -> Dict[str, str]:
-    """Vrati slovnik EAN -> nazev produktu ze Shoptet fedu."""
+def load_shoptet_data(path: Path) -> Dict[str, Dict[str, str]]:
+    """Vrati slovnik EAN -> {'title': nazev, 'image': obrazek} ze Shoptet fedu."""
     if not path.exists():
         logger.warning("Shoptet zdrojovy CSV nebyl nalezen: %s — nazvy nebudou doplneny", path)
         return {}
-    names: Dict[str, str] = {}
+    data: Dict[str, Dict[str, str]] = {}
     with open(path, encoding="utf-8", newline="") as fh:
         reader = csv.DictReader(fh, delimiter=";")
         if not reader.fieldnames:
-            return names
+            return data
         headers = {(h or "").strip().lower(): h for h in reader.fieldnames if h}
         ean_key = headers.get("ean")
         name_key = headers.get("name")
+        image_key = headers.get("image")
         if not ean_key or not name_key:
             logger.warning("shoptet.csv nema sloupce 'ean' a/nebo 'name'")
-            return names
+            return data
         for row in reader:
             ean = normalize_ean(row.get(ean_key, ""))
             name = (row.get(name_key) or "").strip()
-            if ean and name and ean not in names:
-                names[ean] = name
-    return names
+            image = (row.get(image_key) or "").strip() if image_key else ""
+            data[ean] = {"title": name, "image": image}
+    return data
 
 
 def product_exists_in_kaufland(client: KauflandAPIClient, ean: str) -> bool:
     """Vrati True pokud produkt s danym EAN existuje v Kauflandu."""
     try:
         response = client.get(
-            endpoint=f"/v2/products/ean/{ean}",
+            endpoint=f"/products/ean/{ean}",
             params={"storefront": STOREFRONT},
         )
         if response.status_code == 404:
             return False
         response.raise_for_status()
         payload = response.json()
-        return bool(payload.get("data") or payload.get("id_product") or payload.get("id"))
+        
+        data = payload.get("data")
+        if isinstance(data, dict):
+            return "id_product" in data
+        if isinstance(data, list) and len(data) > 0:
+            return "id_product" in data[0]
+        return False
     except requests.HTTPError as exc:
         if exc.response is not None and exc.response.status_code == 401:
             logger.error("Chyba 401 Unauthorized pri kontrole EAN %s — prerusuji.", ean)
@@ -120,7 +127,7 @@ def product_exists_in_kaufland(client: KauflandAPIClient, ean: str) -> bool:
         raise
 
 
-def create_product(client: KauflandAPIClient, ean: str, title: str) -> bool:
+def create_product(client: KauflandAPIClient, ean: str, title: str, image: str) -> bool:
     """Vytvori novy produkt pres PUT /v2/product-data. Vrati True pri uspechu."""
     payload: Dict[str, Any] = {
         "ean": [ean],
@@ -128,10 +135,12 @@ def create_product(client: KauflandAPIClient, ean: str, title: str) -> bool:
             "title": [title],
             "description": [title],
             "category": [DEFAULT_CATEGORY],
+            "picture": [image]
         },
     }
+        
     try:
-        response = client.put(endpoint="/v2/product-data?locale=cs-CZ", data=payload)
+        response = client.put(endpoint="/product-data?locale=cs-CZ", data=payload)
         response.raise_for_status()
         logger.info("Produkt vytvoren: EAN=%s title=%s", ean, title)
         return True
@@ -178,9 +187,9 @@ def main() -> None:
     target_eans = load_target_eans(NEW_PRODUCT_CSV)
     logger.info("Nacteno %s unikatnich EANu", len(target_eans))
 
-    logger.info("Nacitam nazvy z %s", SHOPTET_SOURCE_CSV)
-    shoptet_names = load_shoptet_names(SHOPTET_SOURCE_CSV)
-    logger.info("Nacteno %s nazvu ze Shoptet fedu", len(shoptet_names))
+    logger.info("Nacitam data z %s", SHOPTET_SOURCE_CSV)
+    shoptet_data = load_shoptet_data(SHOPTET_SOURCE_CSV)
+    logger.info("Nacteno %s zaznamu ze Shoptet fedu", len(shoptet_data))
 
     client = KauflandAPIClient()
 
@@ -190,11 +199,9 @@ def main() -> None:
     failed = 0
 
     for index, ean in enumerate(target_eans, start=1):
-        title = shoptet_names.get(ean, "")
-        if not title:
-            logger.warning("[%s/%s] EAN %s nema nazev v shoptet.csv — preskakuji", index, len(target_eans), ean)
-            results.append({"ean": ean, "title": "", "action": "SKIP", "status": "", "note": "chybi nazev"})
-            continue
+        product_info = shoptet_data.get(ean, {})
+        title = product_info.get("title", "")
+        image = product_info.get("image", "")
 
         logger.info("[%s/%s] EAN=%s title=%s", index, len(target_eans), ean, title)
 
@@ -212,7 +219,7 @@ def main() -> None:
             time.sleep(REQUEST_DELAY_SECONDS)
             continue
 
-        ok = create_product(client, ean, title)
+        ok = create_product(client, ean, title, image)
         if ok:
             time.sleep(REQUEST_DELAY_SECONDS)
             import_status = get_product_status(client, ean)
