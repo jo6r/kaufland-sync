@@ -83,3 +83,19 @@ class KauflandAPIClient:
             "User-Agent": "mamitocz_development",
         }
         return self.session.post(url=uri, headers=headers, data=body)
+
+    def put(self, endpoint: str, data: Any, params: Optional[Dict[str, Any]] = None) -> requests.Response:
+        uri = self._build_uri(endpoint, params=params)
+        body = json.dumps(data) if data else ""
+        timestamp = int(time.time())
+        signature = self._sign_request("PUT", uri, body, timestamp)
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Shop-Client-Key": self.client_key,
+            "Shop-Timestamp": str(timestamp),
+            "Shop-Signature": signature,
+            "User-Agent": "mamitocz_development",
+        }
+        return self.session.put(url=uri, headers=headers, data=body)
+

@@ -32,8 +32,7 @@ except ImportError:
     print("Chyba: Nepodarilo se importovat KauflandAPIClient.")
     sys.exit(1)
 
-# Nacteni stejneho .env jako ma shoptet/jirimodels updater pro sdilenou konfiguraci
-load_dotenv(Path(__file__).resolve().parent.parent / "jirimodels-offer-stock-updater" / ".env")
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 logger = logging.getLogger(__name__)
 
