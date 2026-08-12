@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""
+Skript pro vytvoření chybějících jednotek (nabídek) na Kauflandu pro Jiri Models.
+Čte data z CSV 'jirimodels_verify_seller_units.csv' a zakládá prodejní jednotky
+pro existující produkty, které zatím nemají nastavenou nabídku prodejce.
+Cena se automaticky přepočítává s daným násobitelem a filtruje se minimální limit.
+"""
 import os
 import csv
 import json

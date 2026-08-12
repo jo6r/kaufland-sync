@@ -1,3 +1,8 @@
+"""
+Skript pro jednorázovou aktualizaci skladových zásob nabídek Shoptet na Kauflandu.
+Stahuje CSV feed Shoptetu, páruje nabídky v Kauflandu podle EAN kódů a hromadně
+aktualizuje dostupné množství (stock) u odpovídajících jednotek.
+"""
 
 from __future__ import annotations
 

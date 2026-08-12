@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-Process EANs from shoptet.csv, get product details and units,
-enrich with seller info and output to shoptet_verify_seller_units.csv
+Skript pro ověření existujících nabídek (jednotek) na Kauflandu z feedu Shoptetu.
+Zpracovává EAN kódy z 'shoptet.csv', stahuje detaily produktů a jejich prodejních
+jednotek z Kaufland API. Obohacuje data o stav z pohledu prodejce a výsledky
+ukládá do 'shoptet_verify_seller_units.csv'.
 """
 
 import os

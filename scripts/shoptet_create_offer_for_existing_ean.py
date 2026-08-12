@@ -182,7 +182,7 @@ def _extract_product_object(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]
 def resolve_product_id_by_ean(client: KauflandAPIClient, ean: str) -> Optional[int]:
     try:
         response = client.get(
-            endpoint=f"/v2/products/ean/{ean}",
+            endpoint=f"/products/ean/{ean}",
             params={"storefront": "cz", "embedded": "units"},
         )
         response.raise_for_status()
@@ -238,7 +238,7 @@ def create_offer(
 
     try:
         response = client.post(
-            endpoint="/v2/units",
+            endpoint="/units",
             data=payload,
             params={"storefront": storefront},
         )

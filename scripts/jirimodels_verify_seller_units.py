@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-Process EANs from jirimodels.xml, get product details and units,
-enrich with seller info and output to verify_seller_units.csv
+Skript pro ověření existujících nabídek (jednotek) na Kauflandu pro Jiri Models.
+Zpracovává EAN kódy z 'jirimodels.xml', stahuje detaily produktů a jejich prodejních
+jednotek z Kaufland API. Získaná data obohacuje o informace prodejce a ukládá
+výsledky do 'verify_seller_units.csv'.
 """
 
 import os
