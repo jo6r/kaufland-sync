@@ -96,7 +96,8 @@ def load_shoptet_data(path: Path) -> Dict[str, Dict[str, str]]:
             ean = normalize_ean(row.get(ean_key, ""))
             name = (row.get(name_key) or "").strip()
             image = (row.get(image_key) or "").strip() if image_key else ""
-            data[ean] = {"title": name, "image": image}
+            manufacturer = (row.get("manufacturer") or "").strip()
+            data[ean] = {"title": name, "image": image, "manufacturer": manufacturer}
     return data
 
 
@@ -127,7 +128,7 @@ def product_exists_in_kaufland(client: KauflandAPIClient, ean: str) -> bool:
         raise
 
 
-def create_product(client: KauflandAPIClient, ean: str, title: str, image: str) -> bool:
+def create_product(client: KauflandAPIClient, ean: str, title: str, image: str, manufacturer:str) -> bool:
     """Vytvori novy produkt pres PUT /v2/product-data. Vrati True pri uspechu."""
     payload: Dict[str, Any] = {
         "ean": [ean],
@@ -135,14 +136,15 @@ def create_product(client: KauflandAPIClient, ean: str, title: str, image: str) 
             "title": [title],
             "description": [title],
             "category": [DEFAULT_CATEGORY],
-            "picture": [image]
+            "picture": [image],
+            "manufacturer": [manufacturer]
         },
     }
         
     try:
         response = client.put(endpoint="/product-data?locale=cs-CZ", data=payload)
         response.raise_for_status()
-        logger.info("Produkt vytvoren: EAN=%s title=%s", ean, title)
+        logger.info("Produkt vytvoren: EAN=%s title=%s status_code=%s response=%s", ean, title, response.status_code, response.text)
         return True
     except requests.HTTPError as exc:
         if exc.response is not None and exc.response.status_code == 401:
@@ -202,8 +204,10 @@ def main() -> None:
         product_info = shoptet_data.get(ean, {})
         title = product_info.get("title", "")
         image = product_info.get("image", "")
+        manufacturer = product_info.get("manufacturer", "")
 
-        logger.info("[%s/%s] EAN=%s title=%s", index, len(target_eans), ean, title)
+
+        logger.info("[%s/%s] EAN=%s title=%s manufacturer=%s", index, len(target_eans), ean, title, manufacturer)
 
         try:
             exists = product_exists_in_kaufland(client, ean)
@@ -219,7 +223,7 @@ def main() -> None:
             time.sleep(REQUEST_DELAY_SECONDS)
             continue
 
-        ok = create_product(client, ean, title, image)
+        ok = create_product(client, ean, title, image, manufacturer)
         if ok:
             time.sleep(REQUEST_DELAY_SECONDS)
             import_status = get_product_status(client, ean)
