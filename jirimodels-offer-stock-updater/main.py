@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 AMOUNT_IN_STOCK = os.getenv("AMOUNT_IN_STOCK") or 1
 AMOUNT_OUT_OF_STOCK = 0
-MAX_UNITS_PER_REQUEST = 150
+MAX_UNITS_PER_REQUEST = int(os.getenv("MAX_UNITS_PER_REQUEST", "10"))
 
 
 def get_feed_url() -> str:
@@ -219,6 +219,15 @@ def update_units_bulk(client: KauflandAPIClient, payload: List[Dict[str, Any]], 
     """Send a bulk stock update to Kaufland API."""
     logger.info("Sending bulk update with %d units (storefront=%s)", len(payload), storefront)
     response = client.post(endpoint="/v2/units/bulk", data=payload, params={"storefront": storefront})
+    
+    if not response.ok:
+        logger.error(
+            "Bulk update failed with status %s, body: %s, id_units: %s",
+            response.status_code,
+            response.text[:2000],
+            [entry["id_unit"] for entry in payload],
+        )
+
     response.raise_for_status()
     return response.json()
 

@@ -22,7 +22,7 @@ spec:
           restartPolicy: OnFailure
           containers:
           - name: jirimodels-offer-stock-updater
-            image: zot.jo6r.xyz/kaufland/jirimodels-offer-stock-updater:1.6
+            image: zot.jo6r.xyz/kaufland/jirimodels-offer-stock-updater:1.7
             imagePullPolicy: IfNotPresent
             command: ["python", "main.py"]
             envFrom:
