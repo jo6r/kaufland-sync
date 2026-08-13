@@ -18,7 +18,7 @@ load_dotenv(Path(__file__).with_name(".env"))
 
 logger = logging.getLogger(__name__)
 
-MAX_UNITS_PER_REQUEST = 150
+MAX_UNITS_PER_REQUEST = 50
 
 
 def get_csv_url() -> str:
@@ -191,6 +191,38 @@ def update_bulk_quantities(
     return response.json()
 
 
+def send_batch_with_split(
+    client: KauflandAPIClient,
+    payload: List[Dict[str, Any]],
+    storefront: str = "cz",
+) -> tuple[int, int]:
+    """Send payload, halving it on server errors. Returns (updated, failed) unit counts."""
+    try:
+        update_bulk_quantities(client, payload, storefront=storefront)
+        return len(payload), 0
+    except requests.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else None
+
+        if status == 401:
+            logger.error("Received 401 Unauthorized from Kaufland API. Terminating.")
+            raise
+
+        if status is None or status < 500 or len(payload) <= 1:
+            logger.error(
+                "Giving up on %s unit(s) after status %s, id_units: %s",
+                len(payload),
+                status,
+                [entry["id_unit"] for entry in payload],
+            )
+            return 0, len(payload)
+
+    mid = len(payload) // 2
+    logger.warning("Server error on %s units, retrying as two smaller batches", len(payload))
+    left_ok, left_failed = send_batch_with_split(client, payload[:mid], storefront=storefront)
+    right_ok, right_failed = send_batch_with_split(client, payload[mid:], storefront=storefront)
+    return left_ok + right_ok, left_failed + right_failed
+
+
 def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -215,11 +247,23 @@ def main() -> None:
     batches = build_bulk_batches(resolved_rows)
     logger.info("Prepared %s bulk batch(es)", len(batches))
 
-    for batch_idx, batch in enumerate(batches, start=1):
-        result = update_bulk_quantities(client, batch)
-        logger.info("Bulk batch %s/%s successful: %s", batch_idx, len(batches), result)
+    total_updated = 0
+    total_failed = 0
 
-    logger.info("Shoptet offer stock updater completed successfully")
+    for batch_idx, batch in enumerate(batches, start=1):
+        updated, failed = send_batch_with_split(client, batch)
+        total_updated += updated
+        total_failed += failed
+        logger.info(
+            "Bulk batch %s/%s done: updated=%s failed=%s", batch_idx, len(batches), updated, failed
+        )
+
+    logger.info(
+        "Shoptet offer stock updater finished: updated=%s failed=%s", total_updated, total_failed
+    )
+
+    if total_failed:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
