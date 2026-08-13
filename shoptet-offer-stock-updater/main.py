@@ -183,6 +183,15 @@ def update_bulk_quantities(
     """Send one bulk quantity update request."""
     logger.info("Updating %s units in Kaufland", len(payload))
     response = client.post(endpoint="/v2/units/bulk", data=payload, params={"storefront": storefront})
+
+    if not response.ok:
+        logger.error(
+            "Bulk update failed with status %s, body: %s, id_units: %s",
+            response.status_code,
+            response.text[:2000],
+            [entry["id_unit"] for entry in payload],
+        )
+
     response.raise_for_status()
     return response.json()
 
