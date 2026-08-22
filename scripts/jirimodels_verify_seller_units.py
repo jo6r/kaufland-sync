@@ -47,7 +47,7 @@ def extract_eans_from_xml(xml_file) -> Dict[str, Dict[str, Any]]:
                 ean = ean_elem.text.strip()
                 code = product.find('CODE')
                 name = product.find('NAME')
-                price = product.find('PRICE')
+                price = product.find('PRICE_RCMD')
                 stock = product.find('STOCK')
                 
                 eans_data[ean] = {
@@ -166,7 +166,7 @@ def main():
     
     # Open output CSV and write header
     output_fieldnames = [
-        'ean', 'source_code', 'source_name', 'source_price', 'source_stock',
+        'ean', 'source_code', 'source_name', 'source_price_rcmd', 'source_stock',
         'storefront', 'id_product', 'unit_id',
         'condition', 'handling_time', 'id_warehouse',
         'price', 'listing_price', 'amount', 'status',
@@ -215,7 +215,7 @@ def main():
                     'ean': ean,
                     'source_code': eans_data[ean]['code'],
                     'source_name': eans_data[ean]['name'],
-                    'source_price': eans_data[ean]['price'],
+                    'source_price_rcmd': eans_data[ean]['price'],
                     'source_stock': eans_data[ean]['stock'],
                     'storefront': DEFAULT_TARGET_STOREFRONTS,
                     'id_product': id_product,
@@ -243,7 +243,7 @@ def main():
                     'ean': ean,
                     'source_code': eans_data[ean]['code'],
                     'source_name': eans_data[ean]['name'],
-                    'source_price': eans_data[ean]['price'],
+                    'source_price_rcmd': eans_data[ean]['price'],
                     'source_stock': eans_data[ean]['stock'],
                     'storefront': DEFAULT_TARGET_STOREFRONTS,
                     'id_product': id_product,
@@ -272,7 +272,7 @@ def main():
                     'ean': ean,
                     'source_code': eans_data[ean]['code'],
                     'source_name': eans_data[ean]['name'],
-                    'source_price': eans_data[ean]['price'],
+                    'source_price_rcmd': eans_data[ean]['price'],
                     'source_stock': eans_data[ean]['stock'],
                     'storefront': DEFAULT_TARGET_STOREFRONTS,
                     'id_product': '',
