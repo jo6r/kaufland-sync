@@ -12,18 +12,12 @@ import time
 from pathlib import Path
 from urllib.parse import urlencode
 import requests
-
+from dotenv import load_dotenv
 
 EAN = "8032780604378"
 STOREFRONT = "cz"
 
-# Load environment variables from .env
-env_file = Path(__file__).parent / ".env"
-if env_file.exists():
-    for line in env_file.read_text().strip().split('\n'):
-        if '=' in line and not line.startswith('#'):
-            key, value = line.split('=', 1)
-            os.environ[key.strip()] = value.strip().strip('"')
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 KAUFLAND_CLIENT_KEY = os.getenv("KAUFLAND_CLIENT_KEY")
 KAUFLAND_SECRET_KEY = os.getenv("KAUFLAND_SECRET_KEY")
