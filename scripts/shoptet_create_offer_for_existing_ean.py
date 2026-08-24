@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 TARGET_STOREFRONTS = ["cz", "de", "sk", "pl", "es", "fr", "nl", "at", "it"]
 
 MARKUP_MULTIPLIER = Decimal("1.13")
+MARKUP_MULTIPLIER_15 = Decimal("1.15")
 CZK_PER_EUR = Decimal("24.20")
 CZK_PER_PLN = Decimal("5.62")
 
@@ -97,8 +98,8 @@ def calculate_target_listing_price(czk_price_halere: int, storefront: str) -> in
         pln_price = marked_up_czk / CZK_PER_PLN
         return _to_minor_units(pln_price)
 
-    # Ostatni storefronty: nejdriv navyseni o 13 %, potom prevod CZK -> EUR
-    marked_up_czk = czk_price * MARKUP_MULTIPLIER
+    # Ostatni storefronty: nejdriv navyseni o 15 %, potom prevod CZK -> EUR
+    marked_up_czk = czk_price * MARKUP_MULTIPLIER_15
     eur_price = marked_up_czk / CZK_PER_EUR
     return _to_minor_units(eur_price)
 
