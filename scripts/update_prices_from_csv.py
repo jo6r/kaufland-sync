@@ -38,7 +38,7 @@ OUTPUT_CSV_FILE = SCRIPTS_DIR / "data" / "prices_updated.csv"
 TARGET_STOREFRONTS = ["cz", "de", "sk", "pl", "es", "fr", "nl", "at", "it"]
 
 MARKUP_MULTIPLIER = Decimal("1.15")
-CZK_PER_EUR = Decimal("24.20")
+CZK_PER_EUR = Decimal("24.10")
 CZK_PER_PLN = Decimal("5.62")
 
 
