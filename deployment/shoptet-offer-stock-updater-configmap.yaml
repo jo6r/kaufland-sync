@@ -9,5 +9,7 @@ data:
   FEED_CSV_URL: "https://www.mamito.cz/export/products.csv?patternId=27&partnerId=33&hash=62461a573739a6838662d347f4e4beca92c3bc12ebb221046b60a046fd379fd5"
   # Comma-separated list of product codes to ignore
   IGNORE_CODES: "9-LL284"
+  # Mapping for EANs (comma-separated old:new)
+  EAN_MAPPING: "769807531963:0769807531963,086002014078:0086002014078,086002015464:0086002015464,086002015402:0086002015402,086002022325:0086002022325,"
   # Maximum number of units to send in a single bulk update request
   MAX_UNITS_PER_REQUEST: "10"

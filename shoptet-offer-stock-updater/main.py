@@ -40,6 +40,17 @@ def get_ignore_codes() -> set[str]:
     return {part.strip().lower() for part in raw.split(",") if part.strip()}
 
 
+def get_ean_mapping() -> Dict[str, str]:
+    """Return EAN mapping from env (format: old:new,old2:new2)."""
+    raw = os.environ.get("EAN_MAPPING", "")
+    mapping = {}
+    for part in raw.split(","):
+        if ":" in part:
+            old, new = part.split(":", 1)
+            mapping[old.strip()] = new.strip()
+    return mapping
+
+
 def download_csv(url: str, timeout: int = 60) -> str:
     """Download CSV and decode with Windows-1250."""
     logger.info("Downloading CSV from %s", url)
@@ -50,8 +61,11 @@ def download_csv(url: str, timeout: int = 60) -> str:
     return content
 
 
-def parse_feed_rows(csv_content: str, ignore_codes: set[str]) -> List[Dict[str, Any]]:
+def parse_feed_rows(csv_content: str, ignore_codes: set[str], ean_mapping: Dict[str, str] = None) -> List[Dict[str, Any]]:
     """Parse and validate CSV rows from Shoptet feed."""
+    if ean_mapping is None:
+        ean_mapping = {}
+
     rows: List[Dict[str, Any]] = []
     reader = csv.DictReader(io.StringIO(csv_content), delimiter=";")
 
@@ -61,6 +75,9 @@ def parse_feed_rows(csv_content: str, ignore_codes: set[str]) -> List[Dict[str, 
             continue
 
         ean = row.get("ean", "")
+        if ean in ean_mapping:
+            ean = ean_mapping[ean]
+            
         code = row.get("code", "")
         stock = row.get("stock", "")
         visibility = row.get("productvisibility", "")
@@ -206,7 +223,7 @@ def main() -> None:
 
     client = KauflandAPIClient()
     csv_content = download_csv(get_csv_url())
-    feed_rows = parse_feed_rows(csv_content, get_ignore_codes())
+    feed_rows = parse_feed_rows(csv_content, get_ignore_codes(), get_ean_mapping())
 
     if not feed_rows:
         logger.warning("No valid rows in feed")
