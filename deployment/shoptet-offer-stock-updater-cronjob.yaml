@@ -18,8 +18,6 @@ spec:
           labels:
             app: shoptet-offer-stock-updater
         spec:
-          imagePullSecrets:
-          - name: registry-secret
           restartPolicy: OnFailure
           containers:
           - name: shoptet-offer-stock-updater
