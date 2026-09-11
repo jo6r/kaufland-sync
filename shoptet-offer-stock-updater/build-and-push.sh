@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-REGISTRY="zot.jo6r.xyz"
+REGISTRY="zot.home.jo6r.xyz"
 IMAGE_NAME="kaufland/shoptet-offer-stock-updater"
 REGISTRY_USER="zot"
 
@@ -18,13 +18,13 @@ fi
 VERSION="$1"
 FULL_IMAGE_NAME="${REGISTRY}/${IMAGE_NAME}:${VERSION}"
 
-if [ -z "${REGISTRY_PASSWORD:-}" ]; then
-    echo -n "Enter registry password for ${REGISTRY_USER}@${REGISTRY}: "
-    read -rs REGISTRY_PASSWORD
-    echo ""
-else
-    echo "Using REGISTRY_PASSWORD from environment"
-fi
+# if [ -z "${REGISTRY_PASSWORD:-}" ]; then
+#     echo -n "Enter registry password for ${REGISTRY_USER}@${REGISTRY}: "
+#     read -rs REGISTRY_PASSWORD
+#     echo ""
+# else
+#     echo "Using REGISTRY_PASSWORD from environment"
+# fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -38,8 +38,8 @@ podman build --network=host \
     -t "${FULL_IMAGE_NAME}" \
     "${PROJECT_ROOT}"
 
-echo "Logging in to ${REGISTRY}..."
-echo "${REGISTRY_PASSWORD}" | podman login "${REGISTRY}" --username "${REGISTRY_USER}" --password-stdin
+# echo "Logging in to ${REGISTRY}..."
+# echo "${REGISTRY_PASSWORD}" | podman login "${REGISTRY}" --username "${REGISTRY_USER}" --password-stdin
 
 echo "Pushing image..."
 podman push "${FULL_IMAGE_NAME}"
