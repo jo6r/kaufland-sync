@@ -1,12 +1,11 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: shoptet-offer-stock-updater
+  name: jirimodels-offer-stock-updater
   labels:
-    app: shoptet-offer-stock-updater
+    app: jirimodels-offer-stock-updater
 spec:
-  # Schedule: At minute 0 past every 2nd hour.
-  schedule: "0 */2 * * *"
+  schedule: "30 0 * * *"
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
   jobTemplate:
@@ -16,27 +15,19 @@ spec:
       template:
         metadata:
           labels:
-            app: shoptet-offer-stock-updater
+            app: jirimodels-offer-stock-updater
         spec:
           restartPolicy: OnFailure
           containers:
-          - name: shoptet-offer-stock-updater
-            image: zot.home.jo6r.xyz/kaufland/shoptet-offer-stock-updater:1.7
+          - name: jirimodels-offer-stock-updater
+            image: zot.home.jo6r.xyz/kaufland/jirimodels-offer-stock-updater:1.7
             imagePullPolicy: IfNotPresent
             command: ["python", "main.py"]
             envFrom:
                 - configMapRef: 
-                    name: shoptet-offer-stock-updater
-                - configMapRef:
-                    name: kaufland-api
+                    name: jirimodels-offer-stock-updater
                 - secretRef:
                     name: kaufland-api-secret
-            # env:
-            # - name: SHOPTET_CSV_URL
-            #   valueFrom:
-            #     configMapKeyRef:
-            #       name: shoptet-offer-stock-updater
-            #       key: SHOPTET_CSV_URL
             resources:
               requests:
                 memory: "256Mi"

@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: kaufland-api
-  labels:
-    app: kaufland-api
-data:
-  KAUFLAND_STOREFRONT: "cz"
-  KAUFLAND_BASE_URL: "https://sellerapi.kaufland.com"
