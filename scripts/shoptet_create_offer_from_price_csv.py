@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Skript pro zalozeni novych Kaufland nabidek z listu EANu.
+Skript pro zalozeni novych Kaufland nabidek z listu EANu s cenou.
 
-- Nacte EANy ze souboru scripts/data/shoptet_new_offer.csv
-- Pro kazdy EAN dohleda cenu v scripts/data/shoptet.csv
-- Cenu v CZK navysi o 13 % a prevede:
+- Nacte EANy a ceny ze souboru scripts/data/shoptet_new_offer_with_price.csv
+- Cenu v CZK prevede:
+  - CZ storefront zustava v CZK (halere)
   - PL storefront do PLN (grosze)
   - Ostatni storefronty do EUR (centy)
 - Pro kazdy storefront vytvori nabidku pres POST /v2/units
@@ -38,8 +38,6 @@ logger = logging.getLogger(__name__)
 
 TARGET_STOREFRONTS = ["cz", "de", "sk", "pl", "es", "fr", "nl", "at", "it"]
 
-MARKUP_MULTIPLIER = Decimal("1.13")
-MARKUP_MULTIPLIER_15 = Decimal("1.16")
 CZK_PER_EUR = Decimal("24.20")
 CZK_PER_PLN = Decimal("5.62")
 
@@ -88,85 +86,45 @@ def calculate_target_listing_price(czk_price_halere: int, storefront: str) -> in
     czk_price = Decimal(czk_price_halere) / Decimal("100")
 
     if storefront_key == "cz":
-        # CZ: vstupni cena v CZK + navyseni o 13 %
-        cz_price = czk_price * MARKUP_MULTIPLIER
-        return _to_minor_units(cz_price)
+        return _to_minor_units(czk_price)
 
     if storefront_key == "pl":
-        # PL: nejdriv navyseni o 13 %, potom prevod CZK -> PLN
-        marked_up_czk = czk_price * MARKUP_MULTIPLIER
-        pln_price = marked_up_czk / CZK_PER_PLN
-        return _to_minor_units(pln_price)
+        return _to_minor_units(czk_price / CZK_PER_PLN)
 
-    # Ostatni storefronty: nejdriv navyseni o 15 %, potom prevod CZK -> EUR
-    marked_up_czk = czk_price * MARKUP_MULTIPLIER_15
-    eur_price = marked_up_czk / CZK_PER_EUR
-    return _to_minor_units(eur_price)
+    return _to_minor_units(czk_price / CZK_PER_EUR)
 
 
-def load_target_eans(csv_path: Path) -> List[str]:
+def load_offers_with_price(csv_path: Path) -> List[Dict[str, Any]]:
     if not csv_path.exists():
-        raise FileNotFoundError(f"Soubor s EANy nebyl nalezen: {csv_path}")
+        raise FileNotFoundError(f"Soubor s EANy a cenami nebyl nalezen: {csv_path}")
 
-    with open(csv_path, mode="r", encoding="utf-8", newline="") as file_handle:
+    with open(csv_path, mode="r", encoding="utf-8-sig", newline="") as file_handle:
         reader = csv.DictReader(file_handle)
         if not reader.fieldnames:
             raise ValueError(f"CSV soubor nema hlavicku: {csv_path}")
 
         normalized_headers = {header.strip().lower(): header for header in reader.fieldnames if header}
         ean_key = normalized_headers.get("ean")
-        if not ean_key:
-            raise ValueError(f"CSV soubor {csv_path} neobsahuje sloupec 'ean'")
+        price_key = normalized_headers.get("price_czk")
+        if not ean_key or not price_key:
+            raise ValueError(f"CSV soubor {csv_path} neobsahuje sloupce 'ean' a 'price_czk'")
 
-        eans: List[str] = []
+        offers: List[Dict[str, Any]] = []
         seen: Set[str] = set()
         for row in reader:
             ean = normalize_ean(row.get(ean_key))
             if not ean or ean in seen:
                 continue
-            seen.add(ean)
-            eans.append(ean)
-
-    return eans
-
-
-def load_shoptet_offer_data(csv_path: Path) -> Dict[str, Dict[str, Any]]:
-    if not csv_path.exists():
-        raise FileNotFoundError(f"Zdrojovy shoptet CSV nebyl nalezen: {csv_path}")
-
-    offer_data_by_ean: Dict[str, Dict[str, Any]] = {}
-    with open(csv_path, mode="r", encoding="utf-8", newline="") as file_handle:
-        reader = csv.DictReader(file_handle, delimiter=";")
-        if not reader.fieldnames:
-            raise ValueError(f"CSV soubor nema hlavicku: {csv_path}")
-
-        normalized_headers = {header.strip().lower(): header for header in reader.fieldnames if header}
-        ean_key = normalized_headers.get("ean")
-        price_key = normalized_headers.get("price")
-        code_key = normalized_headers.get("code")
-
-        if not ean_key or not price_key or not code_key:
-            raise ValueError(f"CSV soubor {csv_path} neobsahuje sloupce 'ean', 'price' a 'code'")
-
-        for row in reader:
-            ean = normalize_ean(row.get(ean_key))
-            if not ean:
-                continue
 
             price_halere = parse_czk_price_to_halere(row.get(price_key))
             if price_halere is None:
+                logger.warning("EAN %s ma nevalidni nebo chybejici price_czk - preskakuji.", ean)
                 continue
 
-            id_offer = (row.get(code_key) or "").strip()
-            if not id_offer:
-                continue
+            seen.add(ean)
+            offers.append({"ean": ean, "price_halere": price_halere})
 
-            offer_data_by_ean[ean] = {
-                "price_halere": price_halere,
-                "id_offer": ean,
-            }
-
-    return offer_data_by_ean
+    return offers
 
 
 def _extract_product_object(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -285,35 +243,22 @@ def main() -> None:
     )
 
     script_dir = Path(__file__).resolve().parent
-    new_offer_eans_path = script_dir / "data" / "shoptet_new_offer.csv"
-    shoptet_source_path = script_dir / "data" / "shoptet.csv"
+    input_path = script_dir / "data" / "shoptet_new_offer_with_price.csv"
 
-    logger.info("Nacitam EANy z %s", new_offer_eans_path)
-    target_eans = load_target_eans(new_offer_eans_path)
-    logger.info("Nacteno %s unikatnich EANu pro zalozeni nabidek", len(target_eans))
-
-    logger.info("Nacitam ceny z %s", shoptet_source_path)
-    offer_data_by_ean = load_shoptet_offer_data(shoptet_source_path)
-    logger.info("Nacteno %s EANu s cenou a id_offer", len(offer_data_by_ean))
+    logger.info("Nacitam EANy a ceny z %s", input_path)
+    offers = load_offers_with_price(input_path)
+    logger.info("Nacteno %s unikatnich EANu pro zalozeni nabidek", len(offers))
 
     client = KauflandAPIClient()
 
-    missing_price_count = 0
     missing_product_count = 0
     created_count = 0
     failed_count = 0
 
-    for index, ean in enumerate(target_eans, start=1):
-        logger.info("Zpracovavam EAN %s/%s: %s", index, len(target_eans), ean)
-
-        offer_data = offer_data_by_ean.get(ean)
-        if offer_data is None:
-            logger.warning("EAN %s nema cenu nebo code v souboru shoptet.csv - preskakuji.", ean)
-            missing_price_count += 1
-            continue
-
-        price_halere = int(offer_data["price_halere"])
-        id_offer = str(offer_data["id_offer"])
+    for index, offer in enumerate(offers, start=1):
+        ean = str(offer["ean"])
+        price_halere = int(offer["price_halere"])
+        logger.info("Zpracovavam EAN %s/%s: %s", index, len(offers), ean)
 
         id_product = resolve_product_id_by_ean(client, ean)
         if id_product is None:
@@ -328,7 +273,7 @@ def main() -> None:
                 ean=ean,
                 storefront=storefront,
                 listing_price=listing_price,
-                id_offer=id_offer,
+                id_offer=ean,
             )
             if is_created:
                 created_count += 1
@@ -339,10 +284,9 @@ def main() -> None:
             time.sleep(REQUEST_DELAY_SECONDS)
 
     logger.info(
-        "Hotovo. Vytvoreno: %s, selhalo: %s, chybi cena: %s, nenalezen produkt: %s",
+        "Hotovo. Vytvoreno: %s, selhalo: %s, nenalezen produkt: %s",
         created_count,
         failed_count,
-        missing_price_count,
         missing_product_count,
     )
 
