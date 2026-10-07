@@ -142,6 +142,11 @@ def resolve_existing_offers(
         ean = item["ean"]
         try:
             id_unit = fetch_id_unit_for_offer(client, ean, storefront=storefront)
+            if not id_unit and len(ean) < 12:
+                padded_ean = f"0{ean}"
+                logger.info("Retrying Kaufland lookup with leading-zero ean=%s", padded_ean)
+                id_unit = fetch_id_unit_for_offer(client, padded_ean, storefront=storefront)
+
             if not id_unit:
                 logger.info("Offer does not exist in Kaufland for ean=%s", ean)
                 continue
