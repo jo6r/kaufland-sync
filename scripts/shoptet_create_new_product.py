@@ -171,6 +171,21 @@ def get_product_status(client: KauflandAPIClient, ean: str) -> str:
         return "UNKNOWN"
 
 
+def format_http_error(exc: requests.HTTPError) -> str:
+    response = exc.response
+    if response is None:
+        return str(exc)
+
+    reason = f" {response.reason}" if response.reason else ""
+    details = [f"HTTP {response.status_code}{reason}", f"URL={response.url}"]
+    body = " ".join(response.text.split())
+    if body:
+        if len(body) > 1000:
+            body = body[:1000] + "..."
+        details.append(f"response={body}")
+    return "; ".join(details)
+
+
 def write_results(results: List[Dict[str, Any]], path: Path) -> None:
     with open(path, "w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=["ean", "title", "action", "status", "note"])
@@ -211,9 +226,15 @@ def main() -> None:
 
         try:
             exists = product_exists_in_kaufland(client, ean)
-        except requests.HTTPError:
-            results.append({"ean": ean, "title": title, "action": "ERROR", "status": "", "note": "HTTP chyba pri kontrole"})
+        except requests.HTTPError as exc:
+            detail = format_http_error(exc)
+            status = str(exc.response.status_code) if exc.response is not None else ""
+            logger.error("HTTP chyba pri kontrole EAN=%s: %s", ean, detail)
+            results.append({"ean": ean, "title": title, "action": "ERROR", "status": status, "note": detail})
             failed += 1
+            if status == "401":
+                write_results(results, RESULTS_CSV)
+                raise
             continue
 
         if exists:
